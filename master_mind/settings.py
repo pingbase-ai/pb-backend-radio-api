@@ -194,13 +194,17 @@ CORS_ALLOWED_ORIGINS = [
     "wss://ws-mt1.pusher.com",
     "http://localhost:5500",
     "https://js.pusher.com",
+    "http://127.0.0.1:3000",
 ]
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "X-User-Token",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True  # should not use this in production
+CORS_ALLOW_ALL_ORIGINS = False  # should not use this in production
+
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_ROOT = os.path.join(PROJECT_DIR, "static")
 
 SENDGRID_API_KEY = str(os.getenv("SENDGRID_API_KEY"))
 EMAIL_HOST = str(os.getenv("EMAIL_HOST"))
