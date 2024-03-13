@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:latest
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: pb-master-mind-db
+      POSTGRES_USER: pb_root
+      POSTGRES_PASSWORD: Q4R8+w^&Z7+2
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_v1:/var/lib/postgresql/data
+volumes:
+  postgres_data_v1:
