@@ -245,7 +245,7 @@ class OutOfOfficeNoteSerializer(serializers.ModelSerializer):
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ["name", "token", "website", "team_name"]
+        fields = ["name", "token", "website", "team_name", "onboarded"]
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -254,7 +254,14 @@ class ClientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Client
-        fields = ["user", "job_title", "department", "role", "organization"]
+        fields = [
+            "user",
+            "job_title",
+            "department",
+            "role",
+            "organization",
+            "onboarded",
+        ]
 
 
 class EndUserListSerializer(serializers.ModelSerializer):
