@@ -6,6 +6,7 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+from infra_utils.utils import password_rule_check
 from .models import (
     EndUser,
     OfficeHours,
@@ -89,11 +90,12 @@ class ResendVerificationEmailSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(max_length=255, min_length=3)
     password = serializers.CharField(max_length=68, min_length=8, write_only=True)
-    tokens = serializers.CharField(max_length=68, min_length=8, read_only=True)
+    access_token = serializers.CharField(min_length=8, read_only=True)
+    refresh_token = serializers.CharField(min_length=8, read_only=True)
 
     class Meta:
         model = User
-        fields = ["email", "password", "tokens"]
+        fields = ["email", "password", "access_token", "refresh_token"]
 
     def validate(self, attrs):
         email = attrs.get("email", "")
@@ -110,11 +112,43 @@ class LoginSerializer(serializers.ModelSerializer):
         if not user.is_verified:
             raise AuthenticationFailed("Your Email is not verified")
 
-        return {"email": user.email, "tokens": user.get_tokens}
+        tokens = user.get_tokens()
+
+        access_token = tokens["access"]
+        refresh_token = tokens["refresh"]
+
+        return {
+            "email": user.email,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        }
 
 
 class RequestPasswordResetEmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
+
+class SetNewPasswordAdhocSerializer(serializers.Serializer):
+    password = serializers.CharField(min_length=8, write_only=True)
+
+    def validate(self, attrs):
+
+        try:
+            password = attrs.get("password")
+
+            is_valid = password_rule_check(password)
+
+            if not is_valid:
+                raise ValidationError(
+                    "Password must contain at least 8 characters, 1 uppercase, 1 lowercase, 1 number and 1 special character"
+                )
+
+            user = self.context.get("user")
+            user.set_password(password)
+            user.save()
+            return super().validate(attrs)
+        except Exception as e:
+            raise ValidationError("Something went wrong", 401)
 
 
 class SetNewPasswordSerializer(serializers.Serializer):
@@ -145,7 +179,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "first_name", "last_name", "email", "is_active"]
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "email",
+            "is_active",
+            "is_online",
+            "last_login",
+        ]
 
 
 class LogoutSerializer(serializers.Serializer):
@@ -213,3 +255,47 @@ class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = ["user", "job_title", "department", "role", "organization"]
+
+
+class EndUserListSerializer(serializers.ModelSerializer):
+    id = serializers.SerializerMethodField()
+    first_name = serializers.SerializerMethodField()
+    last_name = serializers.SerializerMethodField()
+    email = serializers.SerializerMethodField()
+    is_online = serializers.SerializerMethodField()
+    last_login = serializers.SerializerMethodField()
+
+    def get_id(self, obj):
+        return obj.user.id
+
+    def get_first_name(self, obj):
+        return obj.user.first_name
+
+    def get_last_name(self, obj):
+        return obj.user.last_name
+
+    def get_email(self, obj):
+        return obj.user.email
+
+    def get_is_online(self, obj):
+        return obj.user.is_online
+
+    def get_last_login(self, obj):
+        return obj.user.last_login
+
+    class Meta:
+        model = EndUser
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "email",
+            "is_online",
+            "last_login",
+            "is_trial",
+            "role",
+            "total_sessions",
+            "trail_type",
+            "priority",
+            "company",
+        ]

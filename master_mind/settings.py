@@ -14,6 +14,7 @@ from pathlib import Path
 from corsheaders.defaults import default_headers
 from infra_utils.custom_logging import LOGGING as CUSTOM_LOGGING
 from dotenv import load_dotenv
+from datetime import timedelta
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -53,6 +54,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "pusher_channel_app",
     "events",
+    "home",
 ]
 
 MIDDLEWARE = [
@@ -186,6 +188,8 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
 
@@ -196,6 +200,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5500",
     "https://js.pusher.com",
     "http://127.0.0.1:3000",
+    "http://localhost:8080",
 ]
 
 CORS_ALLOW_HEADERS = list(default_headers) + [

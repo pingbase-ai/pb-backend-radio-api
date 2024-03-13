@@ -23,4 +23,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/pusher/", include("pusher_channel_app.urls")),
     path("api/v1/events/", include("events.urls")),
+    path("api/v1/home/", include("home.urls")),
 ]

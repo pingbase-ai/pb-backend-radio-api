@@ -7,6 +7,7 @@ from .serializers import (
     SetNewPasswordSerializer,
     UserSerializer,
     LogoutSerializer,
+    EndUserListSerializer,
 )
 from rest_framework.response import Response
 from django.contrib.sites.shortcuts import get_current_site
@@ -40,6 +41,7 @@ from .serializers import (
     OutOfOfficeNoteSerializer,
     ClientSerializer,
     OrganizationSerializer,
+    SetNewPasswordAdhocSerializer,
 )
 from infra_utils.views import (
     CustomAPIView,
@@ -47,11 +49,12 @@ from infra_utils.views import (
     CustomGenericAPIListView,
 )
 from infra_utils.utils import password_rule_check, generate_strong_password
-
-User = get_user_model()
+from django.db.models import Q
 
 import logging
+import json
 
+User = get_user_model()
 logger = logging.getLogger("django")
 
 # Create your views here.
@@ -206,6 +209,7 @@ class SignUpView(CustomGenericAPIView):
 class InviteTeamateView(CustomGenericAPIView):
 
     serializer_class = RegistrationSerializer
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, type, *args, **kwargs):
         data = request.data
@@ -292,7 +296,7 @@ class InviteTeamateView(CustomGenericAPIView):
 
 
 class ProfileView(CustomGenericAPIView):
-    is_authenticated = True
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, type):
         user = request.user
@@ -314,6 +318,45 @@ class ProfileView(CustomGenericAPIView):
         #         )
         #     serializer = OrganizationSerializer(organization)
         #     return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {"message": "Invalid profile type"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    def put(self, request, type):
+        user = request.user
+        data = request.data
+        if type == "client":
+            client = Client.objects.filter(user=user).first()
+            if not client:
+                return Response(
+                    {"message": "Client doesn't exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            first_name = data.get("firstName")
+            last_name = data.get("lastName")
+            department = data.get("department")
+            jobTitle = data.get("jobTitle")
+
+            try:
+                user.first_name = first_name
+                user.last_name = last_name
+
+                client.department = department
+                client.job_title = jobTitle
+
+                user.save()
+                client.save()
+
+                return Response(status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.error(f"Error: {e}")
+                return Response(
+                    {"message": "Something went wrong"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
         else:
             return Response(
                 {"message": "Invalid profile type"},
@@ -721,6 +764,7 @@ class LoginView(CustomGenericAPIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
+        print("data", serializer.data)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -729,14 +773,7 @@ class RequestPasswordResetEmailView(CustomGenericAPIView):
     serializer_class = RequestPasswordResetEmailSerializer
 
     def post(self, request):
-        password = request.data["password"]
-        if not password_rule_check(password):
-            return Response(
-                {
-                    "message": "Password must contain at least 8 characters, at least one uppercase letter, one lowercase letter, one number and one special character",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -762,8 +799,14 @@ class RequestPasswordResetEmailView(CustomGenericAPIView):
                 "email_subject": "Reset your password",
             }
 
-            Mail.send_email(data)
+            logger.info(f"data: {data}")
 
+            Mail.send_email(data)
+        else:
+            return Response(
+                {"Error": "The email address does not not match any user account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(
             {"Success": "Password reset email sent"}, status=status.HTTP_200_OK
         )
@@ -812,6 +855,61 @@ class SetNewPasswordView(CustomGenericAPIView):
             {"success": True, "message": "Password changed successfully"},
             status=status.HTTP_200_OK,
         )
+
+
+class ResetPasswordAdhocView(CustomGenericAPIView):
+    serializer_class = SetNewPasswordAdhocSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        user = request.user
+
+        context = {"user": user}
+        logger.info(f"user_id -- { user.id}")
+        serializer = self.serializer_class(data=request.data, context=context)
+        serializer.is_valid(raise_exception=True)
+        return Response(
+            {"success": True, "message": "Password changed successfully"},
+            status=status.HTTP_200_OK,
+        )
+
+
+class EndUserList(CustomGenericAPIListView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = EndUserListSerializer
+
+    def get(self, request, search, *args, **kwargs):
+        user = request.user
+
+        client = Client.objects.filter(user=user).first()
+
+        if not client:
+            return Response(
+                {"message": "Client doesn't exist"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        try:
+            if search:
+                search = search.lower()
+                filtered_users_ids = User.objects.filter(
+                    Q(first_name__icontains=search) | Q(last_name__icontains=search)
+                ).values_list("id", flat=True)
+
+                end_users = client.organization.end_users.filter(
+                    user__id__in=filtered_users_ids
+                )
+
+            else:
+                end_users = client.organization.end_users.all()
+
+            serializer = self.serializer_class(end_users, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return Response(
+                {"message": "Something went wrong"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class UserList(generics.ListAPIView):

@@ -119,6 +119,8 @@ class User(AbstractBaseUser, CustomPermissionsMixin):
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_online = models.BooleanField(default=False)
+    last_login = models.DateTimeField(auto_now=True)
 
     USERNAME_FIELD = "email"
 
@@ -224,6 +226,7 @@ class EndUser(CreatedModifiedModel):
     total_sessions = models.IntegerField(default=0)
     trail_type = models.CharField(max_length=200, null=True, blank=True)
     priority = models.CharField(max_length=200, choices=PRIORITY_CHOICES, default=LOW)
+    company = models.CharField(max_length=200, null=True, blank=True)
 
     objects = EndUserManager()
 

@@ -32,6 +32,11 @@ urlpatterns = [
         name="password-reset-confirm",
     ),
     path("password-reset/", views.SetNewPasswordView.as_view(), name="password-reset"),
+    path(
+        "reset-password-adhoc/",
+        views.ResetPasswordAdhocView.as_view(),
+        name="reset-password-adhoc",
+    ),
     path("logout/", views.LogoutView.as_view(), name="logout"),
     path(
         "onboarding/<slug:type>/",
@@ -47,6 +52,11 @@ urlpatterns = [
         "profile/<slug:type>/",
         views.ProfileView.as_view(),
         name="profile",
+    ),
+    path(
+        "end-users/<slug:search>/",
+        views.EndUserList.as_view(),
+        name="end-user-list",
     ),
     # not completely done
     path("register/", views.RegistrationView.as_view(), name="register"),
