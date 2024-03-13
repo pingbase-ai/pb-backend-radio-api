@@ -242,7 +242,89 @@ class OutOfOfficeNoteSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "description", "is_active", "storage_url", "play_time"]
 
 
+class OrganizationSerializerCustom(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    token = serializers.SerializerMethodField()
+    website = serializers.SerializerMethodField()
+    team_name = serializers.SerializerMethodField()
+    onboarded = serializers.SerializerMethodField()
+    widget = serializers.SerializerMethodField()
+    welcomeNote = serializers.SerializerMethodField()
+    callYouBackNote = serializers.SerializerMethodField()
+    outOfOfficeNote = serializers.SerializerMethodField()
+    officeHours = serializers.SerializerMethodField()
+    timezone = serializers.SerializerMethodField()
+    auto_send_welcome_note = serializers.SerializerMethodField()
+
+    def get_name(self, obj):
+        return obj.name
+
+    def get_token(self, obj):
+        return obj.token
+
+    def get_website(self, obj):
+        return obj.website
+
+    def get_team_name(self, obj):
+        return obj.team_name
+
+    def get_onboarded(self, obj):
+        return obj.onboarded
+
+    def get_widget(self, obj):
+        try:
+            results = obj.widgets.all()
+            return WidgetSerializer(results, many=True).data
+        except Exception as e:
+            results = {}
+        return results
+
+    def get_welcomeNote(self, obj):
+        return WelcomeNoteSerializer(obj.welcome_note).data
+
+    def get_callYouBackNote(self, obj):
+        return CallYouBackNoteSerializer(obj.call_you_back_note).data
+
+    def get_outOfOfficeNote(self, obj):
+        return OutOfOfficeNoteSerializer(obj.out_of_office_note).data
+
+    def get_officeHours(self, obj):
+        try:
+            results = obj.office_hours.all()
+            return OfficeHoursSerializer(results, many=True).data
+        except Exception as e:
+            results = {}
+        return results
+
+    def get_timezone(self, obj):
+        return obj.timezone
+
+    def get_auto_send_welcome_note(self, obj):
+        return obj.auto_send_welcome_note
+
+    class Meta:
+        model = Organization
+        fields = [
+            "name",
+            "token",
+            "website",
+            "team_name",
+            "onboarded",
+            "widget",
+            "welcomeNote",
+            "callYouBackNote",
+            "outOfOfficeNote",
+            "officeHours",
+            "timezone",
+            "auto_send_welcome_note",
+        ]
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
+
+    # add a revere relationship field (widget) here
+    # widget = WidgetSerializer()
+
     class Meta:
         model = Organization
         fields = ["name", "token", "website", "team_name", "onboarded"]
@@ -250,7 +332,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
 class ClientSerializer(serializers.ModelSerializer):
     user = UserSerializer()
-    organization = OrganizationSerializer()
+    organization = OrganizationSerializerCustom()
 
     class Meta:
         model = Client
