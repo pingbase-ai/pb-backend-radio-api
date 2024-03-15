@@ -121,6 +121,7 @@ class User(AbstractBaseUser, CustomPermissionsMixin):
     created_at = models.DateTimeField(auto_now_add=True)
     is_online = models.BooleanField(default=False)
     last_login = models.DateTimeField(auto_now=True)
+    photo = models.TextField(blank=True, null=True, default="")
 
     USERNAME_FIELD = "email"
 
@@ -163,7 +164,7 @@ class Organization(CreatedModifiedModel):
 
 
 class OfficeHours(CreatedModifiedModel):
-    organization = models.OneToOneField(
+    organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="office_hours"
     )
     weekday = models.IntegerField(choices=WEEKDAYS)
@@ -191,7 +192,7 @@ class Client(CreatedModifiedModel):
         (STANDARD_USER, "Standard User"),
         # Add more role choices here
     ]
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="client")
     job_title = models.CharField(max_length=256, null=True, blank=True)
     department = models.CharField(max_length=256, null=True, blank=True)
     # team_office_hours = models.CharField(max_length=256)
@@ -217,7 +218,7 @@ class EndUser(CreatedModifiedModel):
         (HIGH, "High"),
     ]
 
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="end_user")
     organization = models.ForeignKey(
         Organization, on_delete=models.DO_NOTHING, related_name="end_users"
     )
