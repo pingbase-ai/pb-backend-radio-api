@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "pusher_channel_app",
     "events",
     "home",
+    "dyte",
 ]
 
 MIDDLEWARE = [
@@ -223,7 +224,13 @@ DEFAULT_FROM_EMAIL = str(os.getenv("DEFAULT_FROM_EMAIL"))
 
 AUTH_USER_MODEL = "user.User"
 
+# Pusher config
 PUSHER_APP_ID = os.getenv("PUSHER_APP_ID")
 PUSHER_KEY = os.getenv("PUSHER_KEY")
 PUSHER_SECRET = os.getenv("PUSHER_SECRET")
 PUSHER_CLUSTER = os.getenv("PUSHER_CLUSTER")
+
+# Dyte config
+DYTE_ORG_ID = os.getenv("DYTE_ORG_ID")
+DYTE_API_KEY = os.getenv("DYTE_API_KEY")
+DYTE_BASE_URL = os.getenv("DYTE_BASE_URL")
