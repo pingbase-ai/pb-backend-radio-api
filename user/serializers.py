@@ -388,3 +388,42 @@ class EndUserListSerializer(serializers.ModelSerializer):
             "priority",
             "company",
         ]
+
+
+class ClientMemberSerializer(serializers.ModelSerializer):
+
+    id = serializers.SerializerMethodField()
+    photo = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    email = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+    lastLoginTimestamp = serializers.SerializerMethodField()
+
+    def get_id(self, obj):
+        return obj.user.id
+
+    def get_photo(self, obj):
+        return obj.user.photo
+
+    def get_name(self, obj):
+        return obj.user.first_name + " " + obj.user.last_name
+
+    def get_email(self, obj):
+        return obj.user.email
+
+    def get_role(self, obj):
+        return obj.role
+
+    def get_lastLoginTimestamp(self, obj):
+        return obj.user.last_login
+
+    class Meta:
+        model = Client
+        fields = [
+            "id",
+            "photo",
+            "name",
+            "email",
+            "role",
+            "lastLoginTimestamp",
+        ]

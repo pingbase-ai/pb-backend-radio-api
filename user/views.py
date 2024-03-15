@@ -42,6 +42,7 @@ from .serializers import (
     ClientSerializer,
     OrganizationSerializer,
     SetNewPasswordAdhocSerializer,
+    ClientMemberSerializer,
 )
 from infra_utils.views import (
     CustomAPIView,
@@ -204,6 +205,52 @@ class SignUpView(CustomGenericAPIView):
                 return Response(
                     {"message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
+
+
+class MemberList(CustomGenericAPIListView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        user_id = user.id
+
+        company_name = user.client.organization.name
+
+        all_members = Client.objects.filter(organization__name=company_name).exclude(
+            user__id=user_id
+        )
+
+        serializer = ClientMemberSerializer(all_members, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, *args, **kwargs):
+        user = request.user
+
+        user_id = request.data.get("user_id")
+        role = request.data.get("role")
+
+        if user.id == user_id:
+            return Response(
+                {"message": "You cannot change your own role"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            member = Client.objects.filter(user__id=user_id).first()
+            member.role = role
+            member.save()
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return Response(
+                {"message": "Something went wrong"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(
+            {"message": "Role changed successfully"},
+            status=status.HTTP_200_OK,
+        )
 
 
 class InviteTeamateView(CustomGenericAPIView):
@@ -434,8 +481,10 @@ class OnboardingView(CustomAPIView):
             company = data.get("company")
             office_hours = data.get("office_hours")
             team_name = data.get("team_name")
+            timezone = data.get("timezone")
             try:
                 organization.team_name = team_name
+                organization.timezone = timezone
                 organization.save()
                 # delete the office hours
                 OfficeHours.objects.filter(organization=organization).delete()
@@ -446,7 +495,7 @@ class OnboardingView(CustomAPIView):
                         # Check if the instance exists, update or create accordingly
                         instance, _ = OfficeHours.objects.update_or_create(
                             organization=organization,
-                            day=day_data["weekday"],
+                            weekday=day_data["weekday"],
                             defaults=serializer.validated_data,
                         )
                     else:
@@ -464,7 +513,7 @@ class OnboardingView(CustomAPIView):
 
             return Response({"message": "office hours set"}, status=status.HTTP_200_OK)
         elif type == "widget":
-            serializer = WidgetSerializer(data)
+            serializer = WidgetSerializer(data=data)
             if serializer.is_valid():
                 serializer.save(organization=organization)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -532,6 +581,21 @@ class OnboardingView(CustomAPIView):
             return Response(
                 {"message": "Out of office note set"}, status=status.HTTP_200_OK
             )
+        elif type == "auto_send_welcome_note":
+            auto_send_welcome_note = data.get("auto_send_welcome_note")
+            try:
+                organization.auto_send_welcome_note = auto_send_welcome_note
+                organization.save()
+            except Exception as e:
+                logger.error(f"Error: {e}")
+                return Response(
+                    {"message": "Something went wrong"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            return Response(
+                {"message": "Auto send welcome note set"}, status=status.HTTP_200_OK
+            )
+
         else:
             return Response(
                 {"message": "Invalid onboarding type"},

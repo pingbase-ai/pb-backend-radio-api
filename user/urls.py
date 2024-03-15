@@ -53,6 +53,7 @@ urlpatterns = [
         views.ProfileView.as_view(),
         name="profile",
     ),
+    path("members", views.MemberList.as_view(), name="client-member-list"),
     path(
         "end-users/<slug:search>/",
         views.EndUserList.as_view(),
