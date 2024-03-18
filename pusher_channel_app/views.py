@@ -126,12 +126,14 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
 
         pusher_client = PusherClientSingleton().get_client()
         data = json.dumps(request.data)
+        logger.info(f"\n\n\nrequest.headers: {request.headers} \n\n\n")
 
         webhook = pusher_client.validate_webhook(
             key=request.headers.get("X-Pusher-Key"),
             signature=request.headers.get("X-Pusher-Signature"),
             body=data,
         )
+        logger.info(f"webhook -- {webhook}")
 
         for event in webhook["events"]:
 
@@ -308,6 +310,8 @@ class PusherUserAuth(APIView):
         pusher_client = PusherClientSingleton().get_client()
 
         user = {"user_id": user_id, "user_info": {"name": username}}
+
+        logger.info(f"pusher_client: {dir(pusher_client)}")
 
         auth = pusher_client.authenticate(
             channel=channel, socket_id=socket_id, custom_data=user
