@@ -11,10 +11,14 @@ from .serializers import (
     EndUserLoginSerializer,
 )
 from .models import Meeting, Call, VoiceNote, EndUserLogin
-from user.models import Client
+from user.models import Client, User
+from .utils import upload_to_azure_blob
+from django.db.models import Q
+from rest_framework.parsers import FileUploadParser
+from .event_types import WE_SENT_AUDIO_NOTE, SENT_US_AUDIO_NOTE
 import logging
 import datetime
-from django.db.models import Q
+import uuid
 
 
 logger = logging.getLogger("django")
@@ -147,6 +151,7 @@ class ActivitiesCreateModifyClientAPIView(CustomAPIView):
         organization = client.organization
         if tab == "voice_notes":
             data = request.data
+            file = request.data.get("file")
             data["organization"] = organization.id
             serializer = VoiceNoteSerializer(data=data)
             if serializer.is_valid():
@@ -350,5 +355,186 @@ class ActivitiesCreateModifyEndUserAPIView(CustomAPIView):
         else:
             return Response(
                 {"message": "Invalid tab"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
+    permission_classes = (IsAuthenticated,)
+    parser_classes = (FileUploadParser,)
+
+    def post(self, request, filename, *args, **kwargs):
+        user = request.user
+
+        endUserId = request.query_params.get("end_user_id")
+
+        sender = user
+        reciver = User.objects.filter(id=endUserId).first()
+        file = request.FILES["file"]
+        if not file:
+            return Response(
+                {"message": "File not provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        audio_file_url = upload_to_azure_blob(
+            file,
+            f"voice-notes/{user.client.organization.name}",
+            f"voice_note_{uuid.uuid4()}.webm",
+        )
+        logger.info(f"\n\n\n {audio_file_url} \n\n\n")
+
+        try:
+            voice_note = VoiceNote.create_voice_note(
+                sender=sender,
+                reciver=reciver,
+                audio_file_url=audio_file_url,
+                description=request.data.get("description", ""),
+                organization=user.client.organization,
+                event_type=WE_SENT_AUDIO_NOTE,
+            )
+            voice_note.mark_as_seen(user)
+            return Response(
+                {"message": "Voice note created"},
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            logger.error(f"Error while creating voice note: {e}")
+            return Response(
+                {"message": "Error while creating voice note"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ActivitiesViewModifyVoiceNoteClientAPIView(CustomGenericAPIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+
+        user = request.user
+        voice_note_id = request.query_params.get("voice_note_id", None)
+
+        organization = user.client.organization
+
+        try:
+            if voice_note_id:
+                voice_notes = VoiceNote.objects.filter(
+                    organization=organization, voice_note_id=voice_note_id
+                )
+                serialized_data = VoiceNoteSerializer(voice_notes, many=True)
+                return Response(serialized_data.data, status=status.HTTP_200_OK)
+            voice_notes = VoiceNote.objects.filter(organization=organization)
+            serialized_data = VoiceNoteSerializer(voice_notes, many=True)
+            return Response(serialized_data.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error while getting voice notes: {e}")
+            return Response(
+                {"message": "Error while getting voice notes"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        voice_notes = VoiceNote.objects.filter(organization=organization)
+
+    def put(self, request, *args, **kwargs):
+        user = request.user
+        voice_note_id = request.data.get("voice_note_id", None)
+        if not voice_note_id:
+            return Response(
+                {"message": "Voice note id not provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        voice_note = VoiceNote.objects.filter(voice_note_id=voice_note_id).first()
+        if not voice_note:
+            return Response(
+                {"message": "Voice note not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        voice_note.mark_as_seen(user)
+        return Response(
+            {"message": "Voice note marked as seen"},
+            status=status.HTTP_200_OK,
+        )
+
+
+class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
+    parser_classes = (FileUploadParser,)
+
+    def post(self, request, filename, *args, **kwargs):
+
+        endUserId = request.query_params.get("endUserId")
+        user = User.objects.filter(id=endUserId).first()
+        sender = user
+        reciver = None
+        file = request.FILES["file"]
+        if not file:
+            return Response(
+                {"message": "File not provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        audio_file_url = upload_to_azure_blob(
+            file,
+            f"voice-notes/{user.end_user.organization.name}",
+            f"voice_note_{uuid.uuid4()}.webm",
+        )
+        logger.info(f"\n\n\n {audio_file_url} \n\n\n")
+
+        try:
+            voice_note = VoiceNote.create_voice_note(
+                sender=sender,
+                reciver=reciver,
+                audio_file_url=audio_file_url,
+                description=request.data.get("description", ""),
+                organization=user.end_user.organization,
+                event_type=SENT_US_AUDIO_NOTE,
+            )
+            # voice_note.mark_as_seen(user)
+            return Response(
+                {"message": "Voice note created"},
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            logger.error(f"Error while creating voice note: {e}")
+            return Response(
+                {"message": "Error while creating voice note"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ActivitiesViewVoiceNoteEndUserAPIView(CustomGenericAPIView):
+    def get(self, request, *args, **kwargs):
+
+        endUserId = request.query_params.get("endUserId", None)
+
+        if not endUserId:
+            return Response(
+                {"message": "End user id not provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = User.objects.filter(id=endUserId).first()
+
+        endUser = user.end_user
+
+        voiceNoteId = request.query_params.get("voiceNoteId", None)
+
+        organization = endUser.organization
+
+        try:
+            if voiceNoteId:
+                voice_notes = VoiceNote.objects.filter(
+                    organization=organization, voice_note_id=voiceNoteId
+                )
+                serialized_data = VoiceNoteSerializer(voice_notes, many=True)
+                return Response(serialized_data.data, status=status.HTTP_200_OK)
+            voice_notes = VoiceNote.objects.filter(organization=organization)
+            serialized_data = VoiceNoteSerializer(voice_notes, many=True)
+            return Response(serialized_data.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error while getting voice notes: {e}")
+            return Response(
+                {"message": "Error while getting voice notes"},
                 status=status.HTTP_400_BAD_REQUEST,
             )

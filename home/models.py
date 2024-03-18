@@ -145,7 +145,7 @@ class VoiceNote(CreatedModifiedModel):
         Organization, on_delete=models.DO_NOTHING, related_name="voice_notes"
     )
     # TODO Need to fully integrate storage service with audio files
-    audio_file = models.FileField(upload_to="voice_notes/")
+    audio_file_url = models.URLField(max_length=2000, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     description = models.TextField(null=True, blank=True)
 
@@ -154,7 +154,7 @@ class VoiceNote(CreatedModifiedModel):
     )
 
     def __str__(self):
-        return f"VoiceNote for {self.reciver} at {self.created_at}"
+        return f"VoiceNote from {self.sender} at {self.created_at}"
 
     def mark_as_seen(self, user):
         self.is_seen = True
@@ -162,12 +162,22 @@ class VoiceNote(CreatedModifiedModel):
         self.save()
 
     @classmethod
-    def create_voice_note(cls, sender, reciver, audio_file, description=""):
+    def create_voice_note(
+        cls,
+        sender,
+        reciver,
+        audio_file_url,
+        organization,
+        description="",
+        event_type="",
+    ):
         voice_note = cls(
             sender=sender,
             reciver=reciver,
-            audio_file=audio_file,
+            audio_file_url=audio_file_url,
             description=description,
+            organization=organization,
+            event_type=event_type,
         )
         voice_note.save()
         return voice_note
@@ -175,7 +185,9 @@ class VoiceNote(CreatedModifiedModel):
 
 class EndUserLogin(CreatedModifiedModel):
     login_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    end_user = models.OneToOneField(EndUser, on_delete=models.CASCADE)
+    end_user = models.ForeignKey(
+        EndUser, on_delete=models.CASCADE, related_name="logins"
+    )
     last_login = models.DateTimeField(auto_now=True)
     Organization = models.ForeignKey(
         Organization, on_delete=models.DO_NOTHING, related_name="end_user_logins"
