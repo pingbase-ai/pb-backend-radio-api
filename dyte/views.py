@@ -5,6 +5,7 @@ from user.models import User, Client, EndUser
 from rest_framework import status
 from rest_framework.response import Response
 from .models import DyteMeeting, DyteAuthToken
+from .utils import GROUP_CALL_PARTICIPANT, GROUP_CALL_HOST
 
 import logging
 
@@ -34,7 +35,7 @@ class DyteMeetingView(CustomGenericAPIView):
             endUserObj = User.objects.filter(id=end_user_id).first()
             endUser = endUserObj.end_user
 
-            meeting = DyteMeeting.objects.filter(client=clientUser).first()
+            meeting = DyteMeeting.objects.filter(end_user=endUser).first()
 
             if not meeting:
                 return Response(
@@ -50,17 +51,21 @@ class DyteMeetingView(CustomGenericAPIView):
                 is_parent=False, end_user=endUser, meeting=meeting
             ).first()
 
-            if not client_auth_token_obj:
+            if not end_user_auth_token_obj:
                 return Response(
-                    {"error": "Client or EndUser Auth Token not found"},
+                    {"error": "EndUser Auth Token not found"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
-            if not end_user_auth_token_obj:
-                # create a new token for the end user
+            if not client_auth_token_obj:
+                # create a new token for the client
                 try:
-                    end_user_auth_token_obj = DyteAuthToken.create_dyte_auth_token(
-                        meeting, False, clientUser, end_user=endUser
+                    client_auth_token_obj = DyteAuthToken.create_dyte_auth_token(
+                        meeting,
+                        True,
+                        end_user=endUser,
+                        preset=GROUP_CALL_HOST,
+                        client=clientUser,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating Dyte auth token: {e}")
@@ -83,6 +88,73 @@ class DyteMeetingView(CustomGenericAPIView):
 
         except Exception as e:
             logger.error(f"Error while getting Dyte meeting details: {e}")
+            return Response(
+                {"error": "Internal server error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class DyteAuthTokenView(CustomGenericAPIView):
+    permission_classes = (IsAuthenticated,)
+
+    # Retrive the auth token details of the client
+    def get(self, request, *args, **kwargs):
+
+        try:
+            user = request.user
+            meeting_id = request.query_params.get("meeting_id")
+
+            meeting = DyteMeeting.objects.filter(meeting_id=meeting_id).first()
+
+            if not meeting_id:
+                return Response(
+                    {"error": "meeting_id is required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            clientUser = user.client
+
+            endUser = meeting.end_user
+
+            if not meeting:
+                return Response(
+                    {"error": "Meeting not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            client_auth_token_obj = DyteAuthToken.objects.filter(
+                is_parent=True, client=clientUser, meeting=meeting
+            ).first()
+
+            if not client_auth_token_obj:
+                # create a new token for the client
+                try:
+                    client_auth_token_obj = DyteAuthToken.create_dyte_auth_token(
+                        meeting,
+                        True,
+                        end_user=endUser,
+                        preset=GROUP_CALL_HOST,
+                        client=clientUser,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while creating Dyte auth token: {e}")
+                    return Response(
+                        {"error": "Internal server error"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
+
+            client_auth_token = client_auth_token_obj.token
+
+            data = {
+                "meeting": meeting.meeting_id,
+                "title": meeting.title,
+                "client_auth_token": client_auth_token,
+            }
+
+            return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error while getting Dyte auth token details: {e}")
             return Response(
                 {"error": "Internal server error"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

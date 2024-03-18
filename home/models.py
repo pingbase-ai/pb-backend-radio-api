@@ -179,9 +179,7 @@ class EndUserLogin(CreatedModifiedModel):
     Organization = models.ForeignKey(
         Organization, on_delete=models.DO_NOTHING, related_name="end_user_logins"
     )
-    event_type = models.CharField(
-        max_length=255, choices=EVENT_TYPE_CHOICES, default="Logged In"
-    )
+    event_type = models.CharField(max_length=255, default="Logged In")
 
     def __str__(self):
         return f"{self.end_user} + {self.last_login}"

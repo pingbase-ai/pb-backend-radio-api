@@ -6,7 +6,7 @@ from .models import DyteMeeting, DyteAuthToken
 class DyteAdmin(admin.ModelAdmin):
     list_display = (
         "title",
-        "client",
+        "end_user",
     )
 
 

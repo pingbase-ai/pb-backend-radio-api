@@ -15,11 +15,13 @@ urlpatterns = [
         views.ActivitiesClientAPIView.as_view(),
         name="retrieve_client_activities_list",
     ),
+    # used in widget UI
     path(
         "end_user/activity/list/",
         views.ActivitiesEndUserAPIView.as_view(),
         name="retrieve_end_user_activities_list",
     ),
+    # used in widget UI
     path(
         "end_user/activity/",
         views.ActivitiesCreateModifyEndUserAPIView.as_view(),

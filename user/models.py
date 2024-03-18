@@ -78,7 +78,6 @@ class EndUserManager(BaseUserManager):
     def create_enduser(
         self, first_name, last_name, email, organization_name, **extra_fields
     ):
-        print("hello there")
         if not email:
             raise ValueError("The Email field must be set")
         email = self.normalize_email(email)

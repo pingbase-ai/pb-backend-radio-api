@@ -118,27 +118,24 @@ class PusherChannelAppCompanyView(generics.GenericAPIView):  # Fix the base clas
             )
 
 
-class PusherChannelAppWebhookView(generics.GenericAPIView):
+class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
 
     def post(self, request):  # Add the return type annotation
-        # pusher_client = pusher.Pusher(
-        #     app_id="1761006",
-        #     key="b5441bf722df5cb6253f",
-        #     secret="20e6e465d2a0689b5b5b",
-        #     cluster="mt1",
-        # )
-        print(request.headers)
+
+        pusher_client = PusherClientSingleton().get_client()
+
+        webhook = pusher_client.validate_webhook(
+            key=request.headers.get("X-Pusher-Key"),
+            signature=request.headers.get("X-Pusher-Signature"),
+            body=request.data,
+        )
+        for event in webhook["events"]:
+            logger.info(f" Event: {event} \n")
 
         return Response(
             {"status": "success"},
             status=status.HTTP_200_OK,
         )
-
-        # webhook = pusher_client.validate_webhook(
-        #     key=request.headers.get("X-Pusher-Key"),
-        #     signature=request.headers.get("X-Pusher-Signature"),
-        #     body=request.data,
-        # )
 
 
 class ClientPusherChannelAppPublishView(generics.GenericAPIView):
@@ -302,7 +299,7 @@ class PusherEventPublish(CustomAPIView):
         destination_user_id = data.get("destination_user_id")
         status_ = data.get("status")
         frontend_screen = data.get("frontend_screen")
-        socket_id = data.get("socket_id")
+        socket_id = data.get("socket_id", None)
 
         pusher_client = PusherClientSingleton().get_client()
 
@@ -310,31 +307,31 @@ class PusherEventPublish(CustomAPIView):
             pusher_client.trigger(
                 channel, event_type, {"message": f"{message}"}, socket_id
             )
-            Event.create_event_async(
-                event_type=event_type,
-                source_user_id=source_user_id,
-                destination_user_id=destination_user_id,
-                status=status_,
-                duration=None,  # Consider making this parameterized as well
-                frontend_screen=frontend_screen,
-                request_meta=request.META,
-                error_stack_trace=None,
-            )
+            # Event.create_event_async(
+            #     event_type=event_type,
+            #     source_user_id=source_user_id,
+            #     destination_user_id=destination_user_id,
+            #     status=status_,
+            #     duration=None,  # Consider making this parameterized as well
+            #     frontend_screen=frontend_screen,
+            #     request_meta=request.META,
+            #     error_stack_trace=None,
+            # )
             return Response(
                 {"status": "success", "http_status": status.HTTP_200_OK},
                 status=status.HTTP_200_OK,
             )
         except Exception as e:
-            Event.create_event_async(
-                event_type=event_type,
-                source_user_id=source_user_id,
-                destination_user_id=destination_user_id,
-                status="FAILED",
-                duration=None,
-                frontend_screen=frontend_screen,
-                request_meta=request.META,
-                error_stack_trace=str(e),
-            )
+            # Event.create_event_async(
+            #     event_type=event_type,
+            #     source_user_id=source_user_id,
+            #     destination_user_id=destination_user_id,
+            #     status="FAILED",
+            #     duration=None,
+            #     frontend_screen=frontend_screen,
+            #     request_meta=request.META,
+            #     error_stack_trace=str(e),
+            # )
             logger.info(f"Error: {str(e)}")
             return Response(
                 {"http_status": status.HTTP_500_INTERNAL_SERVER_ERROR},
