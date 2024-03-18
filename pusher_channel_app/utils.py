@@ -1,5 +1,3 @@
-import logging
-import pusher
 from django.conf import settings
 from django_q.tasks import async_task
 from rest_framework import status
@@ -7,25 +5,34 @@ from rest_framework import status
 from pusher_channel_app.models import (
     PusherChannelApp,
 )
+import threading
+import logging
+import pusher
 
 logger = logging.getLogger("django")
 
 
 class PusherClientSingleton:
     _instance = None
+    _lock = threading.Lock()  # Adding a lock for thread-safe instance creation
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(PusherClientSingleton, cls).__new__(cls)
-            # Initialize the Pusher client only once
-            cls._instance.client = pusher.Pusher(
-                app_id=settings.PUSHER_APP_ID,
-                key=settings.PUSHER_KEY,
-                secret=settings.PUSHER_SECRET,
-                cluster=settings.PUSHER_CLUSTER,
-                ssl=True,
-            )
+        with cls._lock:  # Using the lock to ensure thread-safe instance creation
+            if cls._instance is None:
+                cls._instance = super(PusherClientSingleton, cls).__new__(cls)
+                # Initialize the Pusher client only once
+                cls._instance.client = pusher.Pusher(
+                    app_id=settings.PUSHER_APP_ID,
+                    key=settings.PUSHER_KEY,
+                    secret=settings.PUSHER_SECRET,
+                    cluster=settings.PUSHER_CLUSTER,
+                    ssl=True,
+                )
         return cls._instance
+
+    @classmethod
+    def verify_pusher_key(cls, key: str):
+        return key == str(settings.PUSHER_KEY)
 
     @classmethod
     def get_client(cls):

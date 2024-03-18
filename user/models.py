@@ -133,10 +133,9 @@ class User(AbstractBaseUser, CustomPermissionsMixin):
         refresh = RefreshToken.for_user(self)
         return {"refresh": str(refresh), "access": str(refresh.access_token)}
 
-    @classmethod
-    def set_online_status(cls, status) -> None:
-        cls.is_online = status
-        cls.save()
+    def set_online_status(self, status: bool) -> None:
+        self.is_online = status
+        self.save()
 
 
 class Organization(CreatedModifiedModel):

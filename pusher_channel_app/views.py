@@ -125,45 +125,57 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
     def post(self, request):  # Add the return type annotation
 
         pusher_client = PusherClientSingleton().get_client()
-        data = json.dumps(request.data)
         logger.info(f"\n\n\nrequest.headers: {request.headers} \n\n\n")
 
-        webhook = pusher_client.validate_webhook(
-            key=request.headers.get("X-Pusher-Key"),
-            signature=request.headers.get("X-Pusher-Signature"),
-            body=data,
-        )
-        logger.info(f"webhook -- {webhook}")
+        pusher_key: str = request.headers.get("X-Pusher-Key")
 
-        for event in webhook["events"]:
+        verified_request = PusherClientSingleton().verify_pusher_key(pusher_key)
 
-            organization = None
+        # TODO implement this fully
+        # webhook = pusher_client.validate_webhook(
+        #     key=request.headers.get("X-Pusher-Key"),
+        #     signature=request.headers.get("X-Pusher-Signature"),
+        #     body=data,
+        # )
+        webhook = request.data
 
-            channel = event["channel"]
-            name = event["name"]
-            user_id = event["user_id"]
+        if verified_request:
+            for event in webhook["events"]:
 
-            userObj = User.objects.filter(id=user_id).first()
+                organization = None
 
-            endUser = userObj.end_user
-            if endUser:
-                organization = endUser.organization
+                channel = event["channel"]
+                name = event["name"]
+                user_id = event["user_id"]
 
-            if name == "member_added":
-                # create a new EndUserLogin instance
+                userObj = User.objects.filter(id=user_id).first()
+
+                endUser = userObj.end_user
                 if endUser:
-                    async_id = EndUserLogin.create_login_async(endUser, organization)
+                    organization = endUser.organization
 
-                # set user status to active
-                userObj.set_online_status(True)
+                if name == "member_added":
+                    # create a new EndUserLogin instance
+                    if endUser:
+                        async_id = EndUserLogin.create_login_async(
+                            endUser, organization
+                        )
 
-            elif name == "member_removed":
-                userObj.set_online_status(False)
+                    # set user status to active
+                    userObj.set_online_status(True)
 
-        return Response(
-            {"status": "success"},
-            status=status.HTTP_200_OK,
-        )
+                elif name == "member_removed":
+                    userObj.set_online_status(False)
+
+            return Response(
+                {"status": "success"},
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response(
+                {"error": "Unauthorized request"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
 
 class ClientPusherChannelAppPublishView(generics.GenericAPIView):
