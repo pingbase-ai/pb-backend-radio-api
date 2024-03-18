@@ -3,6 +3,7 @@ from user.models import User, Organization, EndUser
 from infra_utils.models import CreatedModifiedModel
 import uuid
 from .event_types import EVENT_TYPE_CHOICES
+from django_q.tasks import async_task
 
 
 # Create your models here.
@@ -184,8 +185,14 @@ class EndUserLogin(CreatedModifiedModel):
     def __str__(self):
         return f"{self.end_user} + {self.last_login}"
 
-    @classmethod
-    def create_login(cls, end_user):
-        login = cls(end_user=end_user)
+    @staticmethod
+    def create_login(end_user, organization):
+        login = EndUserLogin(end_user=end_user, Organization=organization)
         login.save()
         return login
+
+    @staticmethod
+    def create_login_async(end_user, organization):
+        task_id = async_task(EndUserLogin.create_login, end_user, organization)
+
+        return task_id

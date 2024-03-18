@@ -15,8 +15,10 @@ from infra_utils.views import CustomGenericAPIView, CustomAPIView
 
 from infra_utils.utils import decode_base64
 from django.conf import settings
+from home.models import EndUserLogin
 
 import logging
+import json
 
 logger = logging.getLogger("django")
 
@@ -123,14 +125,38 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
     def post(self, request):  # Add the return type annotation
 
         pusher_client = PusherClientSingleton().get_client()
+        data = json.dumps(request.data)
 
         webhook = pusher_client.validate_webhook(
             key=request.headers.get("X-Pusher-Key"),
             signature=request.headers.get("X-Pusher-Signature"),
-            body=request.data,
+            body=data,
         )
+
         for event in webhook["events"]:
-            logger.info(f" Event: {event} \n")
+
+            organization = None
+
+            channel = event["channel"]
+            name = event["name"]
+            user_id = event["user_id"]
+
+            userObj = User.objects.filter(id=user_id).first()
+
+            endUser = userObj.end_user
+            if endUser:
+                organization = endUser.organization
+
+            if name == "member_added":
+                # create a new EndUserLogin instance
+                if endUser:
+                    async_id = EndUserLogin.create_login_async(endUser, organization)
+
+                # set user status to active
+                userObj.set_online_status(True)
+
+            elif name == "member_removed":
+                userObj.set_online_status(False)
 
         return Response(
             {"status": "success"},
