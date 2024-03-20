@@ -1,6 +1,27 @@
+# base_types.py
+
+VOICE_NOTE = "VOICE_NOTE"
+CALL_SCHEDULED = "CALL_SCHEDULED"
+CALL_HELD = "CALL_HELD"
+MISSED_CALL = "MISSED_CALL"
+
+# base output types
+SUCCESS = "SUCCESS"
+FAILURE = "FAILURE"
+IN_PROGRESS = "IN_PROGRESS"
+
+
+# initated by
+AUTOMATIC = "AUTOMATIC"
+MANUAL = "MANUAL"
+
+# interaction types
+CALL = "CALL"
+LOGIN = "LOGIN"
+MEETING = "MEETING"
+
 # event_types.py
 
-CALL_SCHEDULED = "CALL_SCHEDULED"
 SCHEDULED_CALL_HELD = "SCHEDULED_CALL_HELD"
 CALLED_US = "CALLED_US"
 ANSWERED_OUR_CALL = "ANSWERED_OUR_CALL"
@@ -23,4 +44,12 @@ EVENT_TYPE_CHOICES = [
     (WE_SENT_AUDIO_NOTE, "We Sent Audio Note"),
     (LOGGED_IN, "Logged In"),
     (DECLINED_CALL, "Declined Call"),
+]
+
+
+GROUPED_EVENT_TYPES = [
+    (VOICE_NOTE, "Voice Note"),
+    (CALL_SCHEDULED, "Call Scheduled"),
+    (CALL_HELD, "Call Held"),
+    (MISSED_CALL, "Missed Call"),
 ]

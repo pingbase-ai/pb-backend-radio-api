@@ -15,10 +15,21 @@ from user.models import Client, User
 from .utils import upload_to_azure_blob
 from django.db.models import Q
 from rest_framework.parsers import FileUploadParser
-from .event_types import WE_SENT_AUDIO_NOTE, SENT_US_AUDIO_NOTE
+from .event_types import (
+    CALL_SCHEDULED,
+    WE_SENT_AUDIO_NOTE,
+    SENT_US_AUDIO_NOTE,
+    ANSWERED_OUR_CALL,
+    MISSED_OUR_CALL,
+)
+from pusher_channel_app.utils import publish_event_to_client, publish_event_to_user
+from infra_utils.utils import encode_base64, UUIDEncoder
+from dyte.models import DyteMeeting, DyteAuthToken
+
 import logging
 import datetime
 import uuid
+import json
 
 
 logger = logging.getLogger("django")
@@ -366,7 +377,7 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
     def post(self, request, filename, *args, **kwargs):
         user = request.user
 
-        endUserId = request.query_params.get("end_user_id")
+        endUserId = request.query_params.get("endUserId")
 
         sender = user
         reciver = User.objects.filter(id=endUserId).first()
@@ -389,11 +400,29 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
                 sender=sender,
                 reciver=reciver,
                 audio_file_url=audio_file_url,
+                is_parent=True,
                 description=request.data.get("description", ""),
                 organization=user.client.organization,
                 event_type=WE_SENT_AUDIO_NOTE,
             )
             voice_note.mark_as_seen(user)
+
+            pusher_data_obj = {
+                "source_event_type": "voice_note",
+                "id": str(voice_note.voice_note_id),
+                "storage_url": audio_file_url,
+                "sender": sender.first_name,
+            }
+            try:
+                publish_event_to_user(
+                    user.client.organization,
+                    "private",
+                    encode_base64(f"{endUserId}"),
+                    "client-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(f"Error while publishing voice note created event: {e}")
             return Response(
                 {"message": "Voice note created"},
                 status=status.HTTP_201_CREATED,
@@ -485,10 +514,26 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
                 sender=sender,
                 reciver=reciver,
                 audio_file_url=audio_file_url,
+                is_parent=False,
                 description=request.data.get("description", ""),
                 organization=user.end_user.organization,
                 event_type=SENT_US_AUDIO_NOTE,
             )
+            pusher_data_obj = {
+                "source_event_type": "voice_note",
+                "id": str(voice_note.voice_note_id),
+                "storage_url": audio_file_url,
+                "sender": sender.first_name,
+            }
+            try:
+                publish_event_to_client(
+                    sender.end_user.organization,
+                    "private",
+                    "enduser-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(f"Error while publishing voice note created event: {e}")
             # voice_note.mark_as_seen(user)
             return Response(
                 {"message": "Voice note created"},
@@ -536,5 +581,225 @@ class ActivitiesViewVoiceNoteEndUserAPIView(CustomGenericAPIView):
             logger.error(f"Error while getting voice notes: {e}")
             return Response(
                 {"message": "Error while getting voice notes"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        endUserId = request.query_params.get("endUserId")
+        user = request.user
+
+        endUser = User.objects.filter(id=endUserId).first().end_user
+
+        receiver = endUser
+        caller = user.client
+        organization = caller.organization
+        event_type = CALL_SCHEDULED
+        is_parent = True
+        try:
+
+            call = Call.create_scheduled_call(
+                receiver=receiver,
+                caller=caller,
+                event_type=event_type,
+                is_parent=is_parent,
+                organization=organization,
+            )
+
+            # Now, get the auth token for client and send it to frontend.
+            endUserMeetingObj = DyteMeeting.objects.filter(end_user=endUser).first()
+            if not endUserMeetingObj:
+                endUserMeetingObj = DyteMeeting.create_meeting(endUser)
+
+            endUserMeetingId = endUserMeetingObj.meeting_id
+
+            # check if the client auth token already exists
+            clientAuthToken = DyteAuthToken.objects.filter(
+                meeting=endUserMeetingObj, is_parent=True, client=caller
+            ).first()
+
+            if not clientAuthToken:
+                clientAuthToken = DyteAuthToken.create_dyte_auth_token(
+                    meeting=endUserMeetingObj,
+                    is_parent=True,
+                    end_user=endUser,
+                    client=caller,
+                )
+
+            # publish the event to the enduser
+            pusher_data_obj = {
+                "source_event_type": "call",
+                "id": str(call.call_id),
+                "meeting_id": endUserMeetingId,
+                "sender": user.first_name,
+                "storage_url": "",
+            }
+            try:
+                publish_event_to_user(
+                    str(organization.name),
+                    "private",
+                    encode_base64(f"{endUserId}"),
+                    "client-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(f"Error while publishing call scheduled event: {e}")
+
+            return Response(
+                {
+                    "message": "Call scheduled",
+                    "meeting_id": endUserMeetingId,
+                    "auth_token": clientAuthToken.token,
+                    "call_id": call.call_id,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            logger.error(f"Error while scheduling call: {e}")
+            return Response(
+                {"message": "Error while scheduling call"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    def get(self, request, *args, **kwargs):
+        endUserId = request.query_params.get("endUserId")
+        user = request.user
+        client = user.client
+
+        endUser = User.objects.filter(id=endUserId).first().end_user
+
+        organization = endUser.organization
+
+        try:
+            all_calls = Call.objects.filter(
+                Q(caller=client)
+                | Q(receiver=endUser)
+                | Q(caller=endUser)
+                | Q(reciver=client),
+                organization=organization,
+            )
+            serialized_data = CallSerializer(all_calls, many=True)
+            return Response(serialized_data.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error while getting calls: {e}")
+            return Response(
+                {"message": "Error while getting calls"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    def put(self, request, *args, **kwargs):
+        user = request.user
+        call_id = request.data.get("call_id", None)
+        update_type = request.data.get("update_type", None)
+
+        if not call_id or not update_type:
+            return Response(
+                {"message": "call_id or update_type not provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        call = Call.objects.filter(call_id=call_id).first()
+        if not call:
+            return Response(
+                {"message": "Call not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            if update_type == "mark_as_seen":
+                call.mark_as_seen(user)
+            elif update_type == "call_accepted":
+                call.event_type = ANSWERED_OUR_CALL
+                call.save()
+            elif update_type == "mark_as_completed":
+                call.status = "completed"
+                call.save()
+            elif update_type == "mark_as_missed":
+                call.status = "missed"
+                call.event_type = MISSED_OUR_CALL
+                call.save()
+            return Response(
+                {"message": f"Call {update_type} successfully"},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            logger.error(f"Error while updating call: {e}")
+            return Response(
+                {"message": "Error while updating call"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
+
+    def post(self, request, *args, **kwargs):
+        endUserId = request.query_params.get("endUserId")
+        endUser = User.objects.filter(id=endUserId).first().end_user
+        caller = endUser
+        receiver = None
+        organization = caller.organization
+        event_type = CALL_SCHEDULED
+        is_parent = False
+        try:
+
+            call = Call.create_scheduled_call(
+                receiver=receiver,
+                caller=caller,
+                event_type=event_type,
+                is_parent=is_parent,
+                organization=organization,
+            )
+
+            # Now, get the auth token for client and send it to frontend.
+            endUserMeetingObj = DyteMeeting.objects.filter(end_user=endUser).first()
+            if not endUserMeetingObj:
+                endUserMeetingObj = DyteMeeting.create_meeting(endUser)
+
+            endUserMeetingId = endUserMeetingObj.meeting_id
+
+            # check if the enduser auth token already exists
+            endUserAuthToken = DyteAuthToken.objects.filter(
+                meeting=endUserMeetingObj, is_parent=False, end_user=caller
+            ).first()
+
+            if not endUserAuthToken:
+                endUserAuthToken = DyteAuthToken.create_dyte_auth_token(
+                    meeting=endUserMeetingObj,
+                    is_parent=False,
+                    end_user=endUser,
+                )
+
+            # publish the event to the client
+            pusher_data_obj = {
+                "source_event_type": "call",
+                "id": str(call.call_id),
+                "meeting_id": endUserMeetingId,
+                "sender": endUser.user.first_name,
+                "storage_url": "",
+            }
+            try:
+                publish_event_to_client(
+                    str(organization.name),
+                    "private",
+                    "enduser-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(f"Error while publishing call scheduled event: {e}")
+
+            return Response(
+                {
+                    "message": "Call scheduled",
+                    "meeting_id": endUserMeetingId,
+                    "auth_token": endUserAuthToken.token,
+                    "call_id": call.call_id,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            logger.error(f"Error while scheduling call: {e}")
+            return Response(
+                {"message": "Error while scheduling call"},
                 status=status.HTTP_400_BAD_REQUEST,
             )

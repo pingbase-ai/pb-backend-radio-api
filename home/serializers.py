@@ -16,11 +16,12 @@ class CallSerializer(serializers.ModelSerializer):
         model = Call
         fields = [
             "caller",
-            "scheduled_time",
             "start_time",
             "end_time",
             "status",
             "is_seen",
+            "event_type",
+            "is_parent",
         ]
 
 

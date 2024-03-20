@@ -97,3 +97,35 @@ def publish_event_to_pusher(organization, data, request_meta):
             "http_status": status.HTTP_500_INTERNAL_SERVER_ERROR,
             "status": "FAILED",
         }
+
+
+def publish_event_to_user(
+    channel_name: str,
+    channel_type: str,
+    user_id: str,
+    event_type: str,
+    data: dict[str, str] = {},
+) -> None:
+    pusher_client = PusherClientSingleton.get_client()
+    channel = f"{channel_type}-{channel_name}-{user_id}"
+    try:
+        pusher_client.trigger(channel, event_type, data)
+
+    except Exception as e:
+        logger.exception(f"Failed to publish event to user -- {str(e)}")
+
+
+def publish_event_to_client(
+    channel_name: str,
+    channel_type: str,
+    event_type: str,
+    data: dict[str, str] = {},
+    socket_id: str = "",
+) -> None:
+    pusher_client = PusherClientSingleton.get_client()
+    channel = f"{channel_type}-{channel_name}"
+    try:
+        pusher_client.trigger(channel, event_type, data, socket_id)
+
+    except Exception as e:
+        logger.exception(f"Failed to publish event to client -- {str(e)}")

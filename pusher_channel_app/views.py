@@ -124,7 +124,7 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
 
     def post(self, request):  # Add the return type annotation
 
-        pusher_client = PusherClientSingleton().get_client()
+        # pusher_client = PusherClientSingleton().get_client()
         logger.info(f"\n\n\nrequest.headers: {request.headers} \n\n\n")
 
         pusher_key: str = request.headers.get("X-Pusher-Key")
@@ -163,6 +163,8 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
 
                     # set user status to active
                     userObj.set_online_status(True)
+
+                    # TODO Send the same notification to slack
 
                 elif name == "member_removed":
                     userObj.set_online_status(False)

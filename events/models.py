@@ -20,6 +20,23 @@ class Event(models.Model):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
 
+    AUTOMATIC = "AUTOMATIC"
+    MANUAL = "MANUAL"
+
+    CALL = "CALL"
+    VOICE_NOTE = "VOICE_NOTE"
+    LOGIN = "LOGIN"
+    MEETING = "MEETING"
+
+    interaction_type_choices = (
+        (CALL, "Call"),
+        (VOICE_NOTE, "Voice Note"),
+        (LOGIN, "Login"),
+        (MEETING, "Meeting"),
+    )
+
+    initiated_by_choices = ((AUTOMATIC, "Automatic"), (MANUAL, "Manual"))
+
     status_choices = (
         (IN_PROGRESS, "In progress"),
         (COMPLETED, "Completed"),
@@ -47,8 +64,23 @@ class Event(models.Model):
     status = models.CharField(max_length=255, choices=status_choices)
     duration = models.IntegerField(blank=True, null=True)
     frontend_screen = models.CharField(max_length=255)
-    request_meta = models.TextField()
+    request_meta = models.TextField(blank=True, null=True)
     error_stack_trace = models.TextField(blank=True, null=True)
+
+    # new fields
+    agent_name = models.CharField(max_length=255, blank=True, null=True)
+    initiated_by = models.CharField(
+        max_length=255, choices=initiated_by_choices, blank=True, null=True
+    )
+    interaction_type = models.CharField(
+        max_length=255, choices=interaction_type_choices, blank=True, null=True
+    )
+    # FK ID to releated model of Meeting, Call, VoiceNote, EndUserLogin from
+    # home.models
+    interaction_id = models.CharField(max_length=255, blank=True, null=True)
+
+    # Field which determines who is the parent of the event
+    is_parent = models.BooleanField(default=False)
 
     # create a string representation for the event model
     def __str__(self):
@@ -65,6 +97,11 @@ class Event(models.Model):
         frontend_screen,
         request_meta,
         error_stack_trace,
+        agent_name=None,
+        initiated_by=None,
+        interaction_type=None,
+        interaction_id=None,
+        is_parent=False,
     ):
         """
         Class method to create an Event instance.
@@ -88,6 +125,11 @@ class Event(models.Model):
             frontend_screen=frontend_screen,
             request_meta=request_meta,
             error_stack_trace=error_stack_trace,
+            agent_name=agent_name,
+            initiated_by=initiated_by,
+            interaction_type=interaction_type,
+            interaction_id=interaction_id,
+            is_parent=is_parent,
         )
         event.save()
         return event
@@ -102,6 +144,11 @@ class Event(models.Model):
         frontend_screen,
         request_meta,
         error_stack_trace,
+        agent_name=None,
+        initiated_by=None,
+        interaction_type=None,
+        interaction_id=None,
+        is_parent=False,
     ):
         """
         Static method to create an Event instance asynchronously.
@@ -126,5 +173,10 @@ class Event(models.Model):
             frontend_screen,
             request_meta,
             error_stack_trace,
+            agent_name=agent_name,
+            initiated_by=initiated_by,
+            interaction_type=interaction_type,
+            interaction_id=interaction_id,
+            is_parent=is_parent,
         )
         return task_id

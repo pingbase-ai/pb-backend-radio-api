@@ -6,7 +6,10 @@ from rest_framework import status
 from rest_framework.response import Response
 from .models import DyteMeeting, DyteAuthToken
 from .utils import GROUP_CALL_PARTICIPANT, GROUP_CALL_HOST
-
+from home.models import Call
+from django.db.models import Q
+from home.event_types import ANSWERED_OUR_CALL
+from django.conf import settings
 import logging
 
 logger = logging.getLogger("django")
@@ -153,6 +156,91 @@ class DyteAuthTokenView(CustomGenericAPIView):
 
             return Response(data, status=status.HTTP_200_OK)
 
+        except Exception as e:
+            logger.error(f"Error while getting Dyte auth token details: {e}")
+            return Response(
+                {"error": "Internal server error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class DyteWebhookView(CustomGenericAPIView):
+
+    def post(self, request, *args, **kwargs):
+
+        webhookId = request.headers.get("dyte-webhook-id")
+
+        if not webhookId:
+            return Response(
+                {"error": "dyte-webhook-id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if webhookId != settings.DYTE_WEBHOOK_ID:
+            return Response(
+                {"error": "Invalid dyte-webhook-id"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            logger.info(f"Request Data: {request.data}")
+            data = request.data
+            event = data.get("event")
+
+            meetingInfo = data.get("meeting")
+            meeting_id = meetingInfo.get("id")
+            session_id = meetingInfo.get("sessionId")
+            organizedBy = meetingInfo.get("organizedBy")
+
+            if event == "meeting.started":
+
+                calEvent = (
+                    Call.objects.filter(
+                        Q(reciver__id=int(organizedBy.id))
+                        | Q(caller__id=int(organizedBy.id))
+                    )
+                    .filter(status="scheduled")
+                    .order_by("-created_at")
+                    .first()
+                )
+
+                calEvent.session_id = session_id
+
+                return Response(
+                    {"status": "success"},
+                    status=status.HTTP_200_OK,
+                )
+
+            if event == "meeting.ended":
+
+                calEvent = Call.objects.filter(session_id=session_id).first()
+                calEvent.status = "completed"
+                calEvent.event_type = ANSWERED_OUR_CALL
+                calEvent.save()
+
+            if event == "recording.statusUpdate":
+                recording = data.get("recording")
+                recordingStatus = recording.get("status")
+
+                meeting_title = (
+                    DyteMeeting.objects.filter(meeting_id=meeting_id).first().title
+                )
+                if recordingStatus == "UPLOADED":
+                    filename = recording.get("outputFileName")
+                    uploaded_url = f"{settings.AZURE_STORAGE_BLOB_URL}/{meeting_title}_{meeting_id}_{filename}"
+                    calEvent = Call.objects.filter(session_id=session_id).first()
+                    calEvent.file_url = uploaded_url
+                    calEvent.save()
+                    return Response(
+                        {"status": "success"},
+                        status=status.HTTP_200_OK,
+                    )
+
+            else:
+                logger.info(f"Event: {event} not handled yet")
+                return Response(
+                    {"status": "success"},
+                    status=status.HTTP_200_OK,
+                )
         except Exception as e:
             logger.error(f"Error while getting Dyte auth token details: {e}")
             return Response(

@@ -38,6 +38,13 @@ class Meeting(CreatedModifiedModel):
         max_length=255, choices=EVENT_TYPE_CHOICES, default="Call Scheduled"
     )
 
+    # Field to differentiate between Client and Enduser Organizer
+    is_parent = models.BooleanField(default=False)
+
+    scheduled_at = models.DateTimeField(auto_now_add=True)
+    session_id = models.CharField(max_length=255, blank=True, null=True)
+    file_url = models.URLField(max_length=2000, blank=True, null=True)
+
     def __str__(self):
         return self.title
 
@@ -88,8 +95,7 @@ class Call(CreatedModifiedModel):
         Organization, on_delete=models.DO_NOTHING, related_name="calls"
     )
 
-    scheduled_time = models.DateTimeField(auto_now_add=True, null=True, blank=True)
-    start_time = models.DateTimeField(null=True, blank=True)
+    start_time = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=10,
@@ -98,9 +104,13 @@ class Call(CreatedModifiedModel):
     event_type = models.CharField(
         max_length=255, choices=EVENT_TYPE_CHOICES, default="Called Us"
     )
+    # Field to differentiate between Client and Enduser Organizer
+    is_parent = models.BooleanField(default=False)
+    file_url = models.URLField(max_length=2000, blank=True, null=True)
+    session_id = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
-        return f"Call from {self.caller} on {self.scheduled_time}"
+        return f"Call from {self.caller} on {self.start_time}"
 
     def mark_as_seen(self, user):
         self.is_seen = True
@@ -108,12 +118,16 @@ class Call(CreatedModifiedModel):
         self.save()
 
     @classmethod
-    def create_scheduled_call(cls, receiver, caller, scheduled_time):
+    def create_scheduled_call(
+        cls, receiver, caller, event_type, is_parent, organization
+    ):
         call = cls(
             receiver=receiver,
             caller=caller,
-            scheduled_time=scheduled_time,
             status="scheduled",
+            event_type=event_type,
+            is_parent=is_parent,
+            organization=organization,
         )
         call.save()
         return call
@@ -152,6 +166,8 @@ class VoiceNote(CreatedModifiedModel):
     event_type = models.CharField(
         max_length=255, choices=EVENT_TYPE_CHOICES, default="Sent Us Audio Note"
     )
+    # Field to differentiate between Client and Enduser Organizer
+    is_parent = models.BooleanField(default=False)
 
     def __str__(self):
         return f"VoiceNote from {self.sender} at {self.created_at}"
@@ -168,6 +184,7 @@ class VoiceNote(CreatedModifiedModel):
         reciver,
         audio_file_url,
         organization,
+        is_parent,
         description="",
         event_type="",
     ):
@@ -178,6 +195,7 @@ class VoiceNote(CreatedModifiedModel):
             description=description,
             organization=organization,
             event_type=event_type,
+            is_parent=is_parent,
         )
         voice_note.save()
         return voice_note

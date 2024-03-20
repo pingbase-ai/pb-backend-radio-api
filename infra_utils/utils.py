@@ -5,6 +5,17 @@ import re
 import uuid
 import base64
 
+import json
+from uuid import UUID
+
+
+class UUIDEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, UUID):
+            # if the obj is uuid, we simply return the value of uuid
+            return obj.hex
+        return json.JSONEncoder.default(self, obj)
+
 
 def generate_random_string() -> str:
     return "".join(random.choices(string.ascii_letters + string.digits, k=12))
