@@ -84,7 +84,7 @@ class Call(CreatedModifiedModel):
         User, related_name="made_calls", on_delete=models.DO_NOTHING
     )
 
-    reciver = models.ForeignKey(
+    receiver = models.ForeignKey(
         User,
         related_name="received_calls",
         on_delete=models.DO_NOTHING,
@@ -138,6 +138,7 @@ class VoiceNote(CreatedModifiedModel):
     voice_note_id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False
     )
+    is_seen_enduser = models.BooleanField(default=False)
     is_seen = models.BooleanField(default=False)
     seen_by = models.ManyToManyField(
         User,
@@ -147,7 +148,7 @@ class VoiceNote(CreatedModifiedModel):
     sender = models.ForeignKey(
         User, related_name="voice_notes", on_delete=models.DO_NOTHING
     )
-    reciver = models.ForeignKey(
+    receiver = models.ForeignKey(
         User,
         related_name="received_voice_notes",
         on_delete=models.DO_NOTHING,
@@ -211,6 +212,7 @@ class EndUserLogin(CreatedModifiedModel):
         Organization, on_delete=models.DO_NOTHING, related_name="end_user_logins"
     )
     event_type = models.CharField(max_length=255, default="Logged In")
+    is_seen = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.end_user} + {self.last_login}"

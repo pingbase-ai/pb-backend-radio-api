@@ -158,6 +158,12 @@ class Organization(CreatedModifiedModel):
     timezone = models.CharField(max_length=256, blank=True, default="")
     team_name = models.CharField(max_length=256, null=True, blank=True)
     onboarded = models.BooleanField(default=False)
+    onboarded_by = models.OneToOneField(
+        "Client",
+        on_delete=models.DO_NOTHING,
+        null=True,
+        related_name="onboarded_organization",
+    )
 
     # Any other specific fields for Organization
 

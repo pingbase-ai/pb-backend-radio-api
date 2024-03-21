@@ -28,7 +28,7 @@ urlpatterns = [
         views.ActivitiesCreateVoiceNoteEndUserAPIView.as_view(),
         name="create_modify_voice_note_enduser_activities",
     ),
-    # end user viewing voice note
+    # end user viewing/ updating voice note
     path(
         "end-user/activity/voice-note",
         views.ActivitiesViewVoiceNoteEndUserAPIView.as_view(),

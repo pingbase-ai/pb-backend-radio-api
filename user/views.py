@@ -51,6 +51,7 @@ from infra_utils.views import (
 )
 from infra_utils.utils import password_rule_check, generate_strong_password
 from django.db.models import Q
+from django.shortcuts import redirect
 
 import logging
 import json
@@ -75,6 +76,39 @@ class SignUpView(CustomGenericAPIView):
     serializer_class = RegistrationSerializer
 
     def get(self, request, type, *args, **kwargs):
+
+        if type == "check":
+            email = request.query_params.get("email", None)
+            company_name = request.query_params.get("company", None)
+
+            if not email or not company_name:
+                return Response(
+                    {"message": "Email and company name are required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                user = User.objects.filter(email=email).first()
+                client = Client.objects.filter(user=user).first()
+                if not user or not client:
+                    return Response(
+                        {"message": "User/client does not exist."},
+                        status=status.HTTP_200_OK,
+                    )
+                if str(client.organization.name).lower() != str(company_name).lower():
+                    return Response(
+                        {"message": "User does not belong to the company."},
+                        status=status.HTTP_401_UNAUTHORIZED,
+                    )
+                return Response(
+                    {"message": "Check passed"},
+                    status=status.HTTP_200_OK,
+                )
+            except Exception as e:
+                logger.error(f"Error: {e}")
+                return Response(
+                    {"message": "Something went wrong"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
         if type == "invitee":
             return Response(
@@ -178,7 +212,7 @@ class SignUpView(CustomGenericAPIView):
                     + "?token="
                     + str(token)
                 )
-                message = ". Use the link below to verify your email.\n If you were not expecting any account verification email, please ignore this \n"
+                message = ". Ready to serve? Use the link below to verify your email and secure your spot in the Pingbase arena. \nIf you received this by a wild shot and weren’t expecting any account verification email, feel free to ignore this volley. \n"
                 email_body = "Hi " + user.email + message + verification_link
                 data = {
                     "email_body": email_body,
@@ -216,8 +250,10 @@ class MemberList(CustomGenericAPIListView):
 
         company_name = user.client.organization.name
 
-        all_members = Client.objects.filter(organization__name=company_name).exclude(
-            user__id=user_id
+        all_members = (
+            Client.objects.filter(organization__name=company_name)
+            .exclude(user__id=user_id)
+            .filter(user__is_active=True, user__is_verified=True)
         )
 
         serializer = ClientMemberSerializer(all_members, many=True)
@@ -249,6 +285,35 @@ class MemberList(CustomGenericAPIListView):
 
         return Response(
             {"message": "Role changed successfully"},
+            status=status.HTTP_200_OK,
+        )
+
+    def delete(self, request, *args, **kwargs):
+        user = request.user
+
+        user_id = request.data.get("user_id")
+
+        if user.id == user_id:
+            return Response(
+                {"message": "You cannot delete yourself"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            member = Client.objects.filter(user__id=user_id).first()
+            # Instead of deleting the user, we will just deactivate the user
+            member.user.is_active = False
+            member.user.is_verified = False
+            member.user.save()
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return Response(
+                {"message": "Something went wrong"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(
+            {"message": "User deleted successfully"},
             status=status.HTTP_200_OK,
         )
 
@@ -309,7 +374,7 @@ class InviteTeamateView(CustomGenericAPIView):
         verification_link = (
             "https://" + current_site_domain + relativeLink + "?token=" + str(token)
         )
-        message = ". Your teamate invited you to join Pingbase Yay! \nUse the link below to verify your email.\n If you were not expecting any account verification email, please ignore this \n"
+        message = ". Hello, team player! You've been served an invite to join Pingbase—Yay! \nUse the link below to verify your email and get ready to rally. \nIf this serve surprises you and you weren’t expecting any account verification email, just let it bounce and ignore this message. \n"
         email_body = "Hi " + user.email + message + verification_link
         data = {
             "email_body": email_body,
@@ -412,6 +477,8 @@ class ProfileView(CustomGenericAPIView):
 
 
 class OnboardingView(CustomAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
     def post(self, request, type):
         data = request.data
         company = data.get("company")
@@ -602,6 +669,36 @@ class OnboardingView(CustomAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+    def put(self, request, type):
+        user = request.user
+        data = request.data
+        company = data.get("company")
+        organization = Organization.objects.filter(name=company).first()
+
+        if not organization:
+            return Response(
+                {"message": "Organization doesn't exist"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        client = Client.objects.filter(user=user).first()
+        try:
+            if type == "organization_onboarding":
+                organization.onboarded = True
+                organization.onboarded_by = client
+                organization.save()
+
+            elif type == "client_onboarding":
+                client.onboarded = True
+                client.save()
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return Response(
+                {"message": "Something went wrong"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        return Response(status=status.HTTP_200_OK)
+
 
 class OnboardingDataView(CustomGenericAPIListView):
     def get(self, request, type):
@@ -726,7 +823,7 @@ class RegistrationView(generics.GenericAPIView):
             verification_link = (
                 "https://" + current_site_domain + relativeLink + "?token=" + str(token)
             )
-            message = ". Use the link below to verify your email.\n If you were not expecting any account verification email, please ignore this \n"
+            message = ". Ready to serve? Use the link below to verify your email and secure your spot in the Pingbase arena. \nIf you received this by a wild shot and weren’t expecting any account verification email, feel free to ignore this volley. \n"
             email_body = "Hi " + user.email + message + verification_link
             data = {
                 "email_body": email_body,
@@ -766,11 +863,26 @@ class EmailVerificationView(CustomAPIView):
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
             user = User.objects.get(id=payload["user_id"])
 
+            client = Client.objects.filter(user=user).first()
+
+            # check if the user is the first user of the company
+            all_clients_objects_count = Client.objects.all().count()
+
+            company_name = client.organization.name
+
             if not user.is_verified:
                 user.is_verified = True
                 user.is_active = True
                 user.save()
-            return Response({"Email Successfully verified"}, status=status.HTTP_200_OK)
+
+            # redirect the user to frontend
+            base_url = "https://app.pingbase.ai/signup"
+            base_url_2 = "https://app.pingbase.ai/login"
+            query_params = f"?email={user.email}&company_name={company_name}"
+            redirect_url = base_url + query_params
+            if all_clients_objects_count == 1:
+                redirect_url = base_url_2
+            return redirect(redirect_url)
 
         except jwt.ExpiredSignatureError as identifier:
             return Response(
@@ -802,7 +914,7 @@ class ResendVerificationEmailView(CustomAPIView):
                     + "?token="
                     + str(token)
                 )
-                message = ". Use the link below to verify your email.\n If you were not expecting any account verification email, please ignore this \n"
+                message = ". Ready to serve? Use the link below to verify your email and secure your spot in the Pingbase arena. \nIf you received this by a wild shot and weren’t expecting any account verification email, feel free to ignore this volley. \n"
                 email_body = "Hi " + Email + message + verification_link
                 data = {
                     "email_body": email_body,
@@ -890,16 +1002,12 @@ class PasswordResetTokenValidationView(CustomGenericAPIView):
                     },
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
+            # Redirect to frontend
+            base_url = "https://app.pingbase.ai/reset-password"
+            query_params = f"?uidb64={uidb64}&token={token}&email={user.email}"
+            redirect_url = base_url + query_params
 
-            return Response(
-                {
-                    "Success": True,
-                    "Message": "Valid Credentials",
-                    "uidb64": uidb64,
-                    "token": token,
-                },
-                status=status.HTTP_200_OK,
-            )
+            return redirect(redirect_url)
 
         except DjangoUnicodeDecodeError as exc:
             if not PasswordResetTokenGenerator().check_token(user):

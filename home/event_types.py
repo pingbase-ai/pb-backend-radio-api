@@ -19,6 +19,7 @@ MANUAL = "MANUAL"
 CALL = "CALL"
 LOGIN = "LOGIN"
 MEETING = "MEETING"
+# VOICE_NOTE = "VOICE_NOTE"
 
 # event_types.py
 

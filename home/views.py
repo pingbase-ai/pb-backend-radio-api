@@ -21,10 +21,16 @@ from .event_types import (
     SENT_US_AUDIO_NOTE,
     ANSWERED_OUR_CALL,
     MISSED_OUR_CALL,
+    MANUAL,
+    CALL,
+    SUCCESS,
+    CALLED_US,
+    MISSED_THEIR_CALL,
 )
 from pusher_channel_app.utils import publish_event_to_client, publish_event_to_user
 from infra_utils.utils import encode_base64, UUIDEncoder
 from dyte.models import DyteMeeting, DyteAuthToken
+from events.models import Event
 
 import logging
 import datetime
@@ -584,6 +590,42 @@ class ActivitiesViewVoiceNoteEndUserAPIView(CustomGenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+    def post(self, request, *args, **kwargs):
+        voice_note_id = request.data.get("voice_note_id", None)
+        if not voice_note_id:
+            return Response(
+                {"message": "Voice note id not provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        voice_note = VoiceNote.objects.filter(voice_note_id=voice_note_id).first()
+        if not voice_note:
+            return Response(
+                {"message": "Voice note not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            voice_note.is_seen_enduser = True
+            voice_note.save()
+
+            # Update the event object
+            event = Event.objects.filter(
+                interaction_type=VOICE_NOTE, interaction_id=voice_note_id
+            ).first()
+            event.interaction_completed = True
+            event.save()
+
+        except Exception as e:
+            logger.error(f"Error while marking voice note as seen: {e}")
+            return Response(
+                {"message": "Error while marking voice note as seen"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {"message": "Voice note marked as seen"},
+            status=status.HTTP_200_OK,
+        )
+
 
 class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
     permission_classes = (IsAuthenticated,)
@@ -712,6 +754,58 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
             elif update_type == "call_accepted":
                 call.event_type = ANSWERED_OUR_CALL
                 call.save()
+                # Create a new event type for this update
+
+                agent_name = None
+                if call.is_parent:
+                    agent_name = call.caller.first_name
+                else:
+                    agent_name = call.receiver.first_name if call.receiver else None
+
+                try:
+                    event = Event.create_event_async(
+                        event_type=ANSWERED_OUR_CALL,
+                        source_user_id=call.caller.id,
+                        destination_user_id=call.receiver.id,
+                        status=SUCCESS,
+                        duration=0,
+                        frontend_screen="NA",
+                        agent_name=agent_name,
+                        initiated_by=MANUAL,
+                        interaction_type=CALL,
+                        interaction_id=call.call_id,
+                        is_parent=call.is_parent,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while creating call event: {e}")
+
+            elif update_type == "we_accepted_the_call":
+                call.event_type = CALLED_US
+                call.save()
+                # Create a new event type for this update
+
+                agent_name = None
+                if call.is_parent:
+                    agent_name = call.caller.first_name
+                else:
+                    agent_name = call.receiver.first_name if call.receiver else None
+
+                try:
+                    event = Event.create_event_async(
+                        event_type=CALLED_US,
+                        source_user_id=call.caller.id,
+                        destination_user_id=call.receiver.id,
+                        status=SUCCESS,
+                        duration=0,
+                        frontend_screen="NA",
+                        agent_name=agent_name,
+                        initiated_by=MANUAL,
+                        interaction_type=CALL,
+                        interaction_id=call.call_id,
+                        is_parent=call.is_parent,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while creating call event: {e}")
             elif update_type == "mark_as_completed":
                 call.status = "completed"
                 call.save()
@@ -719,6 +813,30 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                 call.status = "missed"
                 call.event_type = MISSED_OUR_CALL
                 call.save()
+                # Create a new event type for this update
+
+                agent_name = None
+                if call.is_parent:
+                    agent_name = call.caller.first_name
+                else:
+                    agent_name = call.receiver.first_name if call.receiver else None
+
+                try:
+                    event = Event.create_event_async(
+                        event_type=MISSED_OUR_CALL,
+                        source_user_id=call.caller.id,
+                        destination_user_id=call.receiver.id,
+                        status=SUCCESS,
+                        duration=0,
+                        frontend_screen="NA",
+                        agent_name=agent_name,
+                        initiated_by=MANUAL,
+                        interaction_type=CALL,
+                        interaction_id=call.call_id,
+                        is_parent=call.is_parent,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while creating call event: {e}")
             return Response(
                 {"message": f"Call {update_type} successfully"},
                 status=status.HTTP_200_OK,
@@ -803,3 +921,59 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                 {"message": "Error while scheduling call"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+    def put(self, request, *args, **kwargs):
+        call_id = request.data.get("call_id", None)
+        update_type = request.data.get("update_type", None)
+
+        if not call_id or not update_type:
+            return Response(
+                {"message": "call_id or update_type not provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        call = Call.objects.filter(call_id=call_id).first()
+        if not call:
+            return Response(
+                {"message": "Call not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            if update_type == "mark_as_missed":
+                call.status = "missed"
+                call.event_type = MISSED_THEIR_CALL
+                call.save()
+
+                # Create a new event type for this update
+                agent_name = None
+                if call.is_parent:
+                    agent_name = call.caller.first_name
+                else:
+                    agent_name = call.receiver.first_name if call.receiver else None
+
+                try:
+                    event = Event.create_event_async(
+                        event_type=MISSED_THEIR_CALL,
+                        source_user_id=call.caller.id,
+                        destination_user_id=call.receiver.id,
+                        status=SUCCESS,
+                        duration=0,
+                        frontend_screen="NA",
+                        agent_name=agent_name,
+                        initiated_by=MANUAL,
+                        interaction_type=CALL,
+                        interaction_id=call.call_id,
+                        is_parent=call.is_parent,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while creating call event: {e}")
+
+        except Exception as e:
+            logger.error(f"Error while updating call: {e}")
+            return Response(
+                {"message": "Error while updating call"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            {"message": f"Call {update_type} successfully"},
+            status=status.HTTP_200_OK,
+        )

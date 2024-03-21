@@ -4,6 +4,8 @@ from django_q.tasks import async_task
 
 class Event(models.Model):
 
+    # TODO should create appropirate indexes for the fields
+
     CALL_SCHEDULED = "CALL_SCHEDULED"
     SCHEDULED_CALL_HELD = "SCHEDULED_CALL_HELD"
     CALLED_US = "CALLED_US"
@@ -79,8 +81,13 @@ class Event(models.Model):
     # home.models
     interaction_id = models.CharField(max_length=255, blank=True, null=True)
 
+    # a field to know if the interaction is completed or not, example: voice note played
+
+    interaction_completed = models.BooleanField(default=False, blank=True, null=True)
     # Field which determines who is the parent of the event
     is_parent = models.BooleanField(default=False)
+
+    is_seen_enduser = models.BooleanField(default=False)
 
     # create a string representation for the event model
     def __str__(self):
@@ -142,8 +149,8 @@ class Event(models.Model):
         status,
         duration,
         frontend_screen,
-        request_meta,
-        error_stack_trace,
+        request_meta=None,
+        error_stack_trace=None,
         agent_name=None,
         initiated_by=None,
         interaction_type=None,

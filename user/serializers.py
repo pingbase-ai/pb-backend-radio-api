@@ -17,6 +17,7 @@ from .models import (
     Client,
     Organization,
 )
+import datetime
 
 # from .models import Customer
 
@@ -116,6 +117,9 @@ class LoginSerializer(serializers.ModelSerializer):
 
         access_token = tokens["access"]
         refresh_token = tokens["refresh"]
+
+        user.last_login = datetime.datetime.now()
+        user.save()
 
         return {
             "email": user.email,
@@ -255,6 +259,8 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
     officeHours = serializers.SerializerMethodField()
     timezone = serializers.SerializerMethodField()
     auto_send_welcome_note = serializers.SerializerMethodField()
+    onboarded = serializers.SerializerMethodField()
+    onboarded_by = serializers.SerializerMethodField()
 
     def get_name(self, obj):
         return obj.name
@@ -302,6 +308,14 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
     def get_auto_send_welcome_note(self, obj):
         return obj.auto_send_welcome_note
 
+    def get_onboarded_by(self, obj):
+        if obj.onboarded_by:
+            return obj.onboarded_by.user.email
+        return None
+
+    def get_onboarded(self, obj):
+        return obj.onboarded
+
     class Meta:
         model = Organization
         fields = [
@@ -317,6 +331,8 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
             "officeHours",
             "timezone",
             "auto_send_welcome_note",
+            "onboarded",
+            "onboarded_by",
         ]
 
 

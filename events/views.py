@@ -57,3 +57,84 @@ class EventListPublicAPIView(CustomGenericAPIListView):
         )
         serializer = EventSerializer(events, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class EventPublicAPIView(CustomGenericAPIView):
+
+    def get(self, request, *args, **kwargs):
+        organization_token = request.headers.get("organization-token")
+        endUserId = request.query_params.get("endUserId")
+
+        if not organization_token:
+            return Response(
+                {"error": "organization-token is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not endUserId:
+            return Response(
+                {"error": "endUserId is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        organizationObj = Organization.objects.filter(token=organization_token).first()
+        if not organizationObj:
+            return Response(
+                {"error": "Organization not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        unseen_events = Event.objects.filter(
+            destination_user_id=endUserId,
+            is_seen_enduser=False,
+            event_type__in=[
+                "CALLED_US",
+                "ANSWERED_OUR_CALL",
+                "MISSED_OUR_CALL",
+                "WE_SENT_AUDIO_NOTE",
+                "SENT_US_AUDIO_NOTE",
+            ],
+        )
+        unseen_events_count = unseen_events.count()
+
+        return Response(
+            {"unseen_events_count": unseen_events_count},
+            status=status.HTTP_200_OK,
+        )
+
+    def put(self, request, *args, **kwargs):
+
+        organization_token = request.headers.get("organization-token")
+        endUserId = request.query_params.get("endUserId")
+
+        if not organization_token:
+            return Response(
+                {"error": "organization-token is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        organizationObj = Organization.objects.filter(token=organization_token).first()
+        if not organizationObj:
+            return Response(
+                {"error": "Organization not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        event = Event.objects.filter(
+            destination_user_id=endUserId,
+            is_seen_enduser=False,
+            event_type__in=[
+                "CALLED_US",
+                "ANSWERED_OUR_CALL",
+                "MISSED_OUR_CALL",
+                "WE_SENT_AUDIO_NOTE",
+                "SENT_US_AUDIO_NOTE",
+            ],
+        ).update(is_seen_enduser=True)
+        if not event:
+            return Response(
+                {"error": "Event not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        event.is_seen_enduser = True
+        event.save()
+        return Response(
+            {"message": "All Events marked as seen"}, status=status.HTTP_200_OK
+        )
