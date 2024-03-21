@@ -3,6 +3,11 @@ from django.urls import path, re_path
 
 urlpatterns = [
     path(
+        "end-user/list",
+        views.EndUserListAPIView.as_view(),
+        name="retrive_end_user_list",
+    ),
+    path(
         "client/tasks/", views.TasksClientAPIView.as_view(), name="retrive_tasks_list"
     ),
     path(
