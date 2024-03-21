@@ -25,6 +25,65 @@ import datetime
 User = get_user_model()
 
 
+class CustomEndUserSerializer(serializers.ModelSerializer):
+    first_name = serializers.SerializerMethodField()
+    last_name = serializers.SerializerMethodField()
+    is_online = serializers.SerializerMethodField()
+    last_login = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+    email = serializers.SerializerMethodField()
+    company = serializers.SerializerMethodField()
+    sessions = serializers.SerializerMethodField()
+    trail_type = serializers.SerializerMethodField()
+    linkedin = serializers.SerializerMethodField()
+
+    def get_first_name(self, obj):
+        return obj.user.first_name
+
+    def get_last_name(self, obj):
+        return obj.user.last_name
+
+    def get_is_online(self, obj):
+        return obj.user.is_online
+
+    def get_last_login(self, obj):
+        return obj.user.last_login
+
+    def get_role(self, obj):
+        return obj.role
+
+    def get_email(self, obj):
+        return obj.user.email
+
+    def get_company(self, obj):
+        return obj.company
+
+    def get_sessions(self, obj):
+        return obj.total_sessions
+
+    def get_trail_type(self, obj):
+        return obj.trail_type
+
+    def get_linkedin(self, obj):
+
+        return None
+
+    class Meta:
+        model = EndUser
+        fields = [
+            "first_name",
+            "last_name",
+            "is_online",
+            "last_login",
+            "role",
+            "email",
+            "company",
+            "sessions",
+            "trail_type",
+            "linkedin",
+        ]
+
+
 class EndUserSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(write_only=True)
     last_name = serializers.CharField(write_only=True)

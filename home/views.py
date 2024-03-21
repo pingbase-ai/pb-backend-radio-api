@@ -11,7 +11,7 @@ from .serializers import (
     EndUserLoginSerializer,
 )
 from .models import Meeting, Call, VoiceNote, EndUserLogin
-from user.models import Client, User
+from user.models import Client, User, EndUser
 from .utils import upload_to_azure_blob
 from django.db.models import Q
 from rest_framework.parsers import FileUploadParser
@@ -31,6 +31,7 @@ from pusher_channel_app.utils import publish_event_to_client, publish_event_to_u
 from infra_utils.utils import encode_base64, UUIDEncoder
 from dyte.models import DyteMeeting, DyteAuthToken
 from events.models import Event
+from user.serializers import CustomEndUserSerializer
 
 import logging
 import datetime
@@ -977,3 +978,23 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
             {"message": f"Call {update_type} successfully"},
             status=status.HTTP_200_OK,
         )
+
+
+class EndUserListAPIView(CustomAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        organization = user.client.organization
+        view_type = request.query_params.get("view_type", None)
+
+        end_users = None
+        if view_type == "all":
+            end_users = EndUser.objects.filter(organization=organization)
+        elif view_type == "live":
+            end_users = EndUser.objects.filter(
+                organization=organization, user__is_online=True
+            )
+
+        serialized_data = CustomEndUserSerializer(end_users, many=True)
+        return Response(serialized_data.data, status=status.HTTP_200_OK)
