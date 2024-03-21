@@ -15,8 +15,10 @@ from infra_utils.views import CustomGenericAPIView, CustomAPIView
 
 from infra_utils.utils import decode_base64
 from django.conf import settings
+from home.models import EndUserLogin
 
 import logging
+import json
 
 logger = logging.getLogger("django")
 
@@ -118,27 +120,64 @@ class PusherChannelAppCompanyView(generics.GenericAPIView):  # Fix the base clas
             )
 
 
-class PusherChannelAppWebhookView(generics.GenericAPIView):
+class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
 
     def post(self, request):  # Add the return type annotation
-        # pusher_client = pusher.Pusher(
-        #     app_id="1761006",
-        #     key="b5441bf722df5cb6253f",
-        #     secret="20e6e465d2a0689b5b5b",
-        #     cluster="mt1",
-        # )
-        print(request.headers)
 
-        return Response(
-            {"status": "success"},
-            status=status.HTTP_200_OK,
-        )
+        # pusher_client = PusherClientSingleton().get_client()
+        logger.info(f"\n\n\nrequest.headers: {request.headers} \n\n\n")
 
+        pusher_key: str = request.headers.get("X-Pusher-Key")
+
+        verified_request = PusherClientSingleton().verify_pusher_key(pusher_key)
+
+        # TODO implement this fully
         # webhook = pusher_client.validate_webhook(
         #     key=request.headers.get("X-Pusher-Key"),
         #     signature=request.headers.get("X-Pusher-Signature"),
-        #     body=request.data,
+        #     body=data,
         # )
+        webhook = request.data
+
+        if verified_request:
+            for event in webhook["events"]:
+
+                organization = None
+
+                channel = event["channel"]
+                name = event["name"]
+                user_id = event["user_id"]
+
+                userObj = User.objects.filter(id=user_id).first()
+
+                endUser = userObj.end_user
+                if endUser:
+                    organization = endUser.organization
+
+                if name == "member_added":
+                    # create a new EndUserLogin instance
+                    if endUser:
+                        async_id = EndUserLogin.create_login_async(
+                            endUser, organization
+                        )
+
+                    # set user status to active
+                    userObj.set_online_status(True)
+
+                    # TODO Send the same notification to slack
+
+                elif name == "member_removed":
+                    userObj.set_online_status(False)
+
+            return Response(
+                {"status": "success"},
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response(
+                {"error": "Unauthorized request"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
 
 class ClientPusherChannelAppPublishView(generics.GenericAPIView):
@@ -286,6 +325,8 @@ class PusherUserAuth(APIView):
 
         user = {"user_id": user_id, "user_info": {"name": username}}
 
+        logger.info(f"pusher_client: {dir(pusher_client)}")
+
         auth = pusher_client.authenticate(
             channel=channel, socket_id=socket_id, custom_data=user
         )
@@ -302,7 +343,7 @@ class PusherEventPublish(CustomAPIView):
         destination_user_id = data.get("destination_user_id")
         status_ = data.get("status")
         frontend_screen = data.get("frontend_screen")
-        socket_id = data.get("socket_id")
+        socket_id = data.get("socket_id", None)
 
         pusher_client = PusherClientSingleton().get_client()
 
@@ -310,31 +351,31 @@ class PusherEventPublish(CustomAPIView):
             pusher_client.trigger(
                 channel, event_type, {"message": f"{message}"}, socket_id
             )
-            Event.create_event_async(
-                event_type=event_type,
-                source_user_id=source_user_id,
-                destination_user_id=destination_user_id,
-                status=status_,
-                duration=None,  # Consider making this parameterized as well
-                frontend_screen=frontend_screen,
-                request_meta=request.META,
-                error_stack_trace=None,
-            )
+            # Event.create_event_async(
+            #     event_type=event_type,
+            #     source_user_id=source_user_id,
+            #     destination_user_id=destination_user_id,
+            #     status=status_,
+            #     duration=None,  # Consider making this parameterized as well
+            #     frontend_screen=frontend_screen,
+            #     request_meta=request.META,
+            #     error_stack_trace=None,
+            # )
             return Response(
                 {"status": "success", "http_status": status.HTTP_200_OK},
                 status=status.HTTP_200_OK,
             )
         except Exception as e:
-            Event.create_event_async(
-                event_type=event_type,
-                source_user_id=source_user_id,
-                destination_user_id=destination_user_id,
-                status="FAILED",
-                duration=None,
-                frontend_screen=frontend_screen,
-                request_meta=request.META,
-                error_stack_trace=str(e),
-            )
+            # Event.create_event_async(
+            #     event_type=event_type,
+            #     source_user_id=source_user_id,
+            #     destination_user_id=destination_user_id,
+            #     status="FAILED",
+            #     duration=None,
+            #     frontend_screen=frontend_screen,
+            #     request_meta=request.META,
+            #     error_stack_trace=str(e),
+            # )
             logger.info(f"Error: {str(e)}")
             return Response(
                 {"http_status": status.HTTP_500_INTERNAL_SERVER_ERROR},

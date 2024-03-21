@@ -78,7 +78,6 @@ class EndUserManager(BaseUserManager):
     def create_enduser(
         self, first_name, last_name, email, organization_name, **extra_fields
     ):
-        print("hello there")
         if not email:
             raise ValueError("The Email field must be set")
         email = self.normalize_email(email)
@@ -134,6 +133,10 @@ class User(AbstractBaseUser, CustomPermissionsMixin):
         refresh = RefreshToken.for_user(self)
         return {"refresh": str(refresh), "access": str(refresh.access_token)}
 
+    def set_online_status(self, status: bool) -> None:
+        self.is_online = status
+        self.save()
+
 
 class Organization(CreatedModifiedModel):
     name = models.CharField(max_length=256)
@@ -155,6 +158,12 @@ class Organization(CreatedModifiedModel):
     timezone = models.CharField(max_length=256, blank=True, default="")
     team_name = models.CharField(max_length=256, null=True, blank=True)
     onboarded = models.BooleanField(default=False)
+    onboarded_by = models.OneToOneField(
+        "Client",
+        on_delete=models.DO_NOTHING,
+        null=True,
+        related_name="onboarded_organization",
+    )
 
     # Any other specific fields for Organization
 

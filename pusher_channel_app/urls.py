@@ -10,9 +10,10 @@ urlpatterns = [
         views.PusherChannelAppCompanyView.as_view(),
         name="get_app_details_company",
     ),
+    # AUTO NOTIFIES
     path(
-        "webhook/",
-        views.PusherChannelAppWebhookView.as_view(),
+        "webhook/presence",
+        views.PusherChannelAppWebhookPresenceView.as_view(),
         name="webhook",
     ),
     path(

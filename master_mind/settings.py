@@ -184,17 +184,19 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 10,
+    "PAGE_SIZE": 100,
     "NON_FIELD_ERRORS_KEY": "error",
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
 
+PASSWORD_RESET_TIMEOUT = 604800  # 7 days
 
 CORS_ALLOWED_ORIGINS = [
+    "https://api.pingbase.ai",
     "http://127.0.0.1:8000",  # Django projects running on localhost
     "http://127.0.0.1:5500",
     "wss://ws-mt1.pusher.com",
@@ -202,6 +204,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://js.pusher.com",
     "http://127.0.0.1:3000",
     "http://localhost:8080",
+    "https://*dyte.io",
 ]
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
@@ -234,3 +237,8 @@ PUSHER_CLUSTER = os.getenv("PUSHER_CLUSTER")
 DYTE_ORG_ID = os.getenv("DYTE_ORG_ID")
 DYTE_API_KEY = os.getenv("DYTE_API_KEY")
 DYTE_BASE_URL = os.getenv("DYTE_BASE_URL")
+AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
+AZURE_STORAGE_ACCOUNT_KEY = os.getenv("AZURE_STORAGE_ACCOUNT_KEY")
+AZURE_STORAGE_CONTAINER_NAME = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
+DYTE_AZURE_BLOB_URL = os.getenv("DYTE_AZURE_BLOB_URL")
+DYTE_WEBHOOK_ID = os.getenv("DYTE_WEBHOOK_ID")
