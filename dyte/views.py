@@ -285,6 +285,11 @@ class DyteWebhookView(CustomGenericAPIView):
                 calEvent.event_type = ANSWERED_OUR_CALL
                 calEvent.save()
 
+                return Response(
+                    {"status": "success"},
+                    status=status.HTTP_200_OK,
+                )
+
             if event == "recording.statusUpdate":
                 recording = data.get("recording")
                 recordingStatus = recording.get("status")
@@ -298,6 +303,11 @@ class DyteWebhookView(CustomGenericAPIView):
                     calEvent = Call.objects.filter(session_id=session_id).first()
                     calEvent.file_url = uploaded_url
                     calEvent.save()
+                    return Response(
+                        {"status": "success"},
+                        status=status.HTTP_200_OK,
+                    )
+                else:
                     return Response(
                         {"status": "success"},
                         status=status.HTTP_200_OK,

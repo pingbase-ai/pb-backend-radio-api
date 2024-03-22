@@ -825,6 +825,23 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                 else:
                     agent_name = call.receiver.first_name if call.receiver else None
 
+                # publish the event to the enduser
+                pusher_data_obj = {
+                    "source_event_type": "missed-call",
+                    "id": str(call.call_id),
+                    "sender": str(call.caller.first_name),
+                    "storage_url": "",
+                }
+                try:
+                    publish_event_to_user(
+                        str(user.client.organization.name),
+                        "private",
+                        encode_base64(f"{call.receiver.id}"),
+                        "client-event",
+                        pusher_data_obj,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while publishing call scheduled event: {e}")
                 try:
                     event = Event.create_event_async(
                         event_type=MISSED_OUR_CALL,
