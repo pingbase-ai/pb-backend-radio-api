@@ -20,6 +20,7 @@ class CustomEventSerializer(serializers.ModelSerializer):
     is_parent = serializers.SerializerMethodField()
     source_username = serializers.SerializerMethodField()
     destination_username = serializers.SerializerMethodField()
+    timestamp = serializers.SerializerMethodField()
 
     def get_event_type(self, obj):
         return obj.event_type
@@ -74,6 +75,9 @@ class CustomEventSerializer(serializers.ModelSerializer):
             return username
         return ""
 
+    def get_timestamp(self, obj):
+        return obj.timestamp
+
     class Meta:
         model = Event
         fields = [
@@ -92,6 +96,7 @@ class CustomEventSerializer(serializers.ModelSerializer):
             "is_parent",
             "source_username",
             "destination_username",
+            "timestamp",
         ]
 
 

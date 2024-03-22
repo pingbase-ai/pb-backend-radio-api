@@ -30,6 +30,7 @@ from .models import (
     WelcomeNote,
     CallYouBackNote,
     OutOfOfficeNote,
+    Widget,
 )
 from pusher_channel_app.models import PusherChannelApp
 from .serializers import (
@@ -580,6 +581,15 @@ class OnboardingView(CustomAPIView):
 
             return Response({"message": "office hours set"}, status=status.HTTP_200_OK)
         elif type == "widget":
+            widgetObj = Widget.objects.filter(organization=organization).first()
+            if widgetObj:
+                widgetObj.avatar = data.get("avatar")
+                widgetObj.position = data.get("position")
+                widgetObj.save()
+                return Response(
+                    {"message": "Widget updated"}, status=status.HTTP_200_OK
+                )
+
             serializer = WidgetSerializer(data=data)
             if serializer.is_valid():
                 serializer.save(organization=organization)
@@ -730,13 +740,44 @@ class OnboardingDataView(CustomGenericAPIListView):
 
 class CreateEndUserView(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
-        serializer = EndUserSerializer(data=request.data)
+        org_token = request.headers.get("organization-token")
+        if not org_token:
+            return Response(
+                {"message": "Organization token is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        organization = Organization.objects.filter(token=org_token).first()
+        if not organization:
+            return Response(
+                {"message": "Organization not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        user = User.objects.filter(email=request.data.get("email")).first()
+
+        # end_user = EndUser.objects.filter(email=request.data.get("email")).first()
+
+        if user:
+            return Response(
+                {"id": user.id, "message": "EndUser already exists"},
+                status=status.HTTP_200_OK,
+            )
+        required_data = {
+            "organization_name": organization.name,
+            "first_name": request.data.get("first_name"),
+            "last_name": request.data.get("last_name"),
+            "email": request.data.get("email"),
+            "role": request.data.get("role"),
+            "trail_type": request.data.get("trail_type"),
+            "company": request.data.get("company"),
+        }
+        serializer = EndUserSerializer(data=required_data)
         if serializer.is_valid():
             end_user = serializer.save()
             return Response(
                 {
                     "message": "EndUser created successfully.",
-                    "end_user_id": end_user.id,
+                    "end_user_id": end_user.user.id,
                 },
                 status=status.HTTP_201_CREATED,
             )
