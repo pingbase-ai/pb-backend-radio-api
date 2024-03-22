@@ -159,7 +159,7 @@ class VoiceNote(CreatedModifiedModel):
     organization = models.ForeignKey(
         Organization, on_delete=models.DO_NOTHING, related_name="voice_notes"
     )
-    # TODO Need to fully integrate storage service with audio files
+
     audio_file_url = models.URLField(max_length=2000, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     description = models.TextField(null=True, blank=True)
@@ -182,7 +182,7 @@ class VoiceNote(CreatedModifiedModel):
     def create_voice_note(
         cls,
         sender,
-        reciver,
+        receiver,
         audio_file_url,
         organization,
         is_parent,
@@ -191,7 +191,7 @@ class VoiceNote(CreatedModifiedModel):
     ):
         voice_note = cls(
             sender=sender,
-            reciver=reciver,
+            receiver=receiver,
             audio_file_url=audio_file_url,
             description=description,
             organization=organization,

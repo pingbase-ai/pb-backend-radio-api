@@ -34,6 +34,7 @@ def create_login_event(sender, instance, created, **kwargs):
                 interaction_type=LOGIN,
                 interaction_id=instance.login_id,
                 is_parent=False,
+                storage_url=None,
             )
         except Exception as e:
             logger.error(f"Error while creating login event: {e}")
@@ -58,8 +59,9 @@ def create_voice_note_event(sender, instance, created, **kwargs):
                 agent_name=None,
                 initiated_by=MANUAL,
                 interaction_type=VOICE_NOTE,
-                interaction_id=instance.id,
+                interaction_id=instance.voice_note_id,
                 is_parent=instance.is_parent,
+                storage_url=instance.audio_file_url,
             )
         except Exception as e:
             logger.error(f"Error while creating voice note event: {e}")
@@ -67,7 +69,7 @@ def create_voice_note_event(sender, instance, created, **kwargs):
         # update the existing record of event
         try:
             event = Event.objects.filter(
-                interaction_type=VOICE_NOTE, interaction_id=instance.id
+                interaction_type=VOICE_NOTE, interaction_id=instance.voice_note_id
             ).first()
             event.source_user_id = instance.sender.id
             event.destination_user_id = instance.receiver.id

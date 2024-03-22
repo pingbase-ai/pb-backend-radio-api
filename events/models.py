@@ -89,6 +89,8 @@ class Event(models.Model):
 
     is_seen_enduser = models.BooleanField(default=False)
 
+    storage_url = models.URLField(max_length=2000, blank=True, null=True)
+
     # create a string representation for the event model
     def __str__(self):
         return self.event_type
@@ -109,6 +111,7 @@ class Event(models.Model):
         interaction_type=None,
         interaction_id=None,
         is_parent=False,
+        storage_url=None,
     ):
         """
         Class method to create an Event instance.
@@ -137,6 +140,7 @@ class Event(models.Model):
             interaction_type=interaction_type,
             interaction_id=interaction_id,
             is_parent=is_parent,
+            storage_url=storage_url,
         )
         event.save()
         return event
@@ -156,6 +160,7 @@ class Event(models.Model):
         interaction_type=None,
         interaction_id=None,
         is_parent=False,
+        storage_url=storage_url,
     ):
         """
         Static method to create an Event instance asynchronously.
@@ -185,5 +190,6 @@ class Event(models.Model):
             interaction_type=interaction_type,
             interaction_id=interaction_id,
             is_parent=is_parent,
+            storage_url=storage_url,
         )
         return task_id

@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Event
-from .serializers import EventSerializer
+from .serializers import EventSerializer, CustomEventSerializer
 from infra_utils.views import CustomGenericAPIView, CustomGenericAPIListView
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
@@ -30,7 +30,7 @@ class EventListAPIView(CustomGenericAPIListView):
         events = Event.objects.filter(
             Q(source_user_id=endUserId) | Q(destination_user_id=endUserId)
         )
-        serializer = EventSerializer(events, many=True)
+        serializer = CustomEventSerializer(events, many=True)
         return Response(serializer.data)
 
 
@@ -55,7 +55,7 @@ class EventListPublicAPIView(CustomGenericAPIListView):
         events = Event.objects.filter(
             Q(source_user_id=endUserId) | Q(destination_user_id=endUserId)
         )
-        serializer = EventSerializer(events, many=True)
+        serializer = CustomEventSerializer(events, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

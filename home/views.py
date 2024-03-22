@@ -387,7 +387,7 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
         endUserId = request.query_params.get("endUserId")
 
         sender = user
-        reciver = User.objects.filter(id=endUserId).first()
+        receiver = User.objects.filter(id=endUserId).first()
         file = request.FILES["file"]
         if not file:
             return Response(
@@ -405,7 +405,7 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
         try:
             voice_note = VoiceNote.create_voice_note(
                 sender=sender,
-                reciver=reciver,
+                receiver=receiver,
                 audio_file_url=audio_file_url,
                 is_parent=True,
                 description=request.data.get("description", ""),
@@ -501,7 +501,7 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
         endUserId = request.query_params.get("endUserId")
         user = User.objects.filter(id=endUserId).first()
         sender = user
-        reciver = None
+        receiver = None
         file = request.FILES["file"]
         if not file:
             return Response(
@@ -519,7 +519,7 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
         try:
             voice_note = VoiceNote.create_voice_note(
                 sender=sender,
-                reciver=reciver,
+                receiver=receiver,
                 audio_file_url=audio_file_url,
                 is_parent=False,
                 description=request.data.get("description", ""),
@@ -635,11 +635,12 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
         endUserId = request.query_params.get("endUserId")
         user = request.user
 
-        endUser = User.objects.filter(id=endUserId).first().end_user
+        receiver = User.objects.filter(id=endUserId).first()
 
-        receiver = endUser
-        caller = user.client
-        organization = caller.organization
+        endUser = receiver.end_user
+        caller = user
+        client = user.client
+        organization = client.organization
         event_type = CALL_SCHEDULED
         is_parent = True
         try:
@@ -661,7 +662,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
 
             # check if the client auth token already exists
             clientAuthToken = DyteAuthToken.objects.filter(
-                meeting=endUserMeetingObj, is_parent=True, client=caller
+                meeting=endUserMeetingObj, is_parent=True, client=client
             ).first()
 
             if not clientAuthToken:
@@ -669,7 +670,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                     meeting=endUserMeetingObj,
                     is_parent=True,
                     end_user=endUser,
-                    client=caller,
+                    client=client,
                 )
 
             # publish the event to the enduser
@@ -776,6 +777,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         interaction_type=CALL,
                         interaction_id=call.call_id,
                         is_parent=call.is_parent,
+                        storage_url=call.file_url,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
@@ -804,6 +806,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         interaction_type=CALL,
                         interaction_id=call.call_id,
                         is_parent=call.is_parent,
+                        storage_url=call.file_url,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
@@ -835,6 +838,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         interaction_type=CALL,
                         interaction_id=call.call_id,
                         is_parent=call.is_parent,
+                        storage_url=call.file_url,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
@@ -854,10 +858,11 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
 
     def post(self, request, *args, **kwargs):
         endUserId = request.query_params.get("endUserId")
-        endUser = User.objects.filter(id=endUserId).first().end_user
-        caller = endUser
+        user = User.objects.filter(id=endUserId).first()
+        caller = user
+        endUser = user.end_user
         receiver = None
-        organization = caller.organization
+        organization = endUser.organization
         event_type = CALL_SCHEDULED
         is_parent = False
         try:
@@ -879,7 +884,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
 
             # check if the enduser auth token already exists
             endUserAuthToken = DyteAuthToken.objects.filter(
-                meeting=endUserMeetingObj, is_parent=False, end_user=caller
+                meeting=endUserMeetingObj, is_parent=False, end_user=endUser
             ).first()
 
             if not endUserAuthToken:
@@ -944,6 +949,23 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                 call.event_type = MISSED_THEIR_CALL
                 call.save()
 
+                # send a notification to pusher
+                pusher_data_obj = {
+                    "source_event_type": "missed-call",
+                    "id": str(call.call_id),
+                    "sender": call.caller.first_name,
+                    "storage_url": "",
+                }
+            try:
+                publish_event_to_client(
+                    str(call.organization.name),
+                    "private",
+                    "enduser-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(f"Error while publishing call scheduled event: {e}")
+
                 # Create a new event type for this update
                 agent_name = None
                 if call.is_parent:
@@ -964,6 +986,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                         interaction_type=CALL,
                         interaction_id=call.call_id,
                         is_parent=call.is_parent,
+                        storage_url=call.file_url,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")

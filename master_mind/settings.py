@@ -195,6 +195,18 @@ REST_FRAMEWORK = {
 
 PASSWORD_RESET_TIMEOUT = 604800  # 7 days
 
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://api.pingbase.ai",
+    "http://127.0.0.1:8000",  # Django projects running on localhost
+    "http://127.0.0.1:5500",
+    "wss://ws-mt1.pusher.com",
+    "http://localhost:5500",
+    "https://js.pusher.com",
+    "http://127.0.0.1:3000",
+    "http://localhost:8080",
+]
+
 CORS_ALLOWED_ORIGINS = [
     "https://api.pingbase.ai",
     "http://127.0.0.1:8000",  # Django projects running on localhost
@@ -204,12 +216,13 @@ CORS_ALLOWED_ORIGINS = [
     "https://js.pusher.com",
     "http://127.0.0.1:3000",
     "http://localhost:8080",
-    "https://*dyte.io",
 ]
 
-CORS_ALLOW_HEADERS = list(default_headers) + [
-    "X-User-Token",
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://\w+\.dyte\.io$",
 ]
+
+CORS_ALLOW_HEADERS = list(default_headers) + ["X-User-Token", "organization-token"]
 
 CORS_ALLOW_ALL_ORIGINS = False  # should not use this in production
 
@@ -242,3 +255,5 @@ AZURE_STORAGE_ACCOUNT_KEY = os.getenv("AZURE_STORAGE_ACCOUNT_KEY")
 AZURE_STORAGE_CONTAINER_NAME = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
 DYTE_AZURE_BLOB_URL = os.getenv("DYTE_AZURE_BLOB_URL")
 DYTE_WEBHOOK_ID = os.getenv("DYTE_WEBHOOK_ID")
+UPLEAD_API_KEY = os.getenv("UPLEAD_API_KEY")
+UPLEAD_BASE_URL = os.getenv("UPLEAD_BASE_URL")

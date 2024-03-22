@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from infra_utils.views import CustomGenericAPIView
 from rest_framework.permissions import IsAuthenticated
-from user.models import User, Client, EndUser
+from user.models import User, Client, EndUser, Organization
 from rest_framework import status
 from rest_framework.response import Response
 from .models import DyteMeeting, DyteAuthToken
@@ -91,6 +91,74 @@ class DyteMeetingView(CustomGenericAPIView):
 
         except Exception as e:
             logger.error(f"Error while getting Dyte meeting details: {e}")
+            return Response(
+                {"error": "Internal server error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class DytePublicAuthTokenView(CustomGenericAPIView):
+
+    # Retrive the auth token details of the enduser
+    def get(self, request, *args, **kwargs):
+
+        org_token = request.headers.get("organization-token")
+        if not org_token:
+            return Response(
+                {"error": "organization" "token is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        orgObj = Organization.objects.filter(token=org_token).first()
+        if not orgObj:
+            return Response(
+                {"error": "Organization not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            endUserId = request.query_params.get("endUserId")
+            user = User.objects.filter(id=endUserId).first()
+            endUser = user.end_user
+
+            if not endUser:
+                return Response(
+                    {"error": "EndUser not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            meeting = DyteMeeting.objects.filter(end_user=endUser).first()
+            authToken = DyteAuthToken.objects.filter(
+                is_parent=False, end_user=endUser, meeting=meeting
+            ).first()
+
+            if not authToken:
+                # create a new token for the enUser
+                try:
+                    authToken = DyteAuthToken.create_dyte_auth_token(
+                        meeting,
+                        False,
+                        end_user=endUser,
+                        preset=GROUP_CALL_PARTICIPANT,
+                        client=None,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while creating Dyte auth token: {e}")
+                    return Response(
+                        {"error": "Internal server error"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
+
+            data = {
+                "meeting": meeting.meeting_id,
+                "title": meeting.title,
+                "end_user_auth_token": authToken.token,
+            }
+
+            return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error while getting Dyte auth token details: {e}")
             return Response(
                 {"error": "Internal server error"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -76,7 +76,7 @@ class CustomPermissionsMixin(PermissionsMixin):
 
 class EndUserManager(BaseUserManager):
     def create_enduser(
-        self, first_name, last_name, email, organization_name, **extra_fields
+        self, first_name, email, organization_name, last_name=None, **extra_fields
     ):
         if not email:
             raise ValueError("The Email field must be set")
@@ -365,7 +365,7 @@ class Widget(models.Model):
         ("bottom_right", "Bottom Right"),
     ]
 
-    organization = models.ForeignKey(
+    organization = models.OneToOneField(
         Organization, on_delete=models.CASCADE, related_name="widgets"
     )
     avatar = models.CharField(max_length=50, choices=AVATAR_CHOICES)
