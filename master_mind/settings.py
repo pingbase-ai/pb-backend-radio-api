@@ -71,8 +71,6 @@ MIDDLEWARE = [
     "master_mind.middleware.TimingMiddleware",
 ]
 
-CORS_ALLOWED_HEADERS = ["Content-Type", "organization-token"]
-
 ROOT_URLCONF = "master_mind.urls"
 
 TEMPLATES = [
@@ -199,7 +197,7 @@ PASSWORD_RESET_TIMEOUT = 604800  # 7 days
 
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://*pingbase.ai",
+    "https://api.pingbase.ai",
     "http://127.0.0.1:8000",  # Django projects running on localhost
     "http://127.0.0.1:5500",
     "wss://ws-mt1.pusher.com",
@@ -207,11 +205,10 @@ CSRF_TRUSTED_ORIGINS = [
     "https://js.pusher.com",
     "http://127.0.0.1:3000",
     "http://localhost:8080",
-    "https://*dyte.io",
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "https://*pingbase.ai",
+    "https://api.pingbase.ai",
     "http://127.0.0.1:8000",  # Django projects running on localhost
     "http://127.0.0.1:5500",
     "wss://ws-mt1.pusher.com",
@@ -219,12 +216,13 @@ CORS_ALLOWED_ORIGINS = [
     "https://js.pusher.com",
     "http://127.0.0.1:3000",
     "http://localhost:8080",
-    "https://*dyte.io",
 ]
 
-CORS_ALLOW_HEADERS = list(default_headers) + [
-    "X-User-Token",
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://\w+\.dyte\.io$",
 ]
+
+CORS_ALLOW_HEADERS = list(default_headers) + ["X-User-Token", "organization-token"]
 
 CORS_ALLOW_ALL_ORIGINS = False  # should not use this in production
 
