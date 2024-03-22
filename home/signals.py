@@ -58,7 +58,7 @@ def create_voice_note_event(sender, instance, created, **kwargs):
                 agent_name=None,
                 initiated_by=MANUAL,
                 interaction_type=VOICE_NOTE,
-                interaction_id=instance.id,
+                interaction_id=instance.voice_note_id,
                 is_parent=instance.is_parent,
             )
         except Exception as e:
@@ -67,7 +67,7 @@ def create_voice_note_event(sender, instance, created, **kwargs):
         # update the existing record of event
         try:
             event = Event.objects.filter(
-                interaction_type=VOICE_NOTE, interaction_id=instance.id
+                interaction_type=VOICE_NOTE, interaction_id=instance.voice_note_id
             ).first()
             event.source_user_id = instance.sender.id
             event.destination_user_id = instance.receiver.id
