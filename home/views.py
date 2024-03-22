@@ -387,7 +387,7 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
         endUserId = request.query_params.get("endUserId")
 
         sender = user
-        reciver = User.objects.filter(id=endUserId).first()
+        receiver = User.objects.filter(id=endUserId).first()
         file = request.FILES["file"]
         if not file:
             return Response(
@@ -405,7 +405,7 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
         try:
             voice_note = VoiceNote.create_voice_note(
                 sender=sender,
-                reciver=reciver,
+                receiver=receiver,
                 audio_file_url=audio_file_url,
                 is_parent=True,
                 description=request.data.get("description", ""),
@@ -501,7 +501,7 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
         endUserId = request.query_params.get("endUserId")
         user = User.objects.filter(id=endUserId).first()
         sender = user
-        reciver = None
+        receiver = None
         file = request.FILES["file"]
         if not file:
             return Response(
@@ -519,7 +519,7 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
         try:
             voice_note = VoiceNote.create_voice_note(
                 sender=sender,
-                reciver=reciver,
+                receiver=receiver,
                 audio_file_url=audio_file_url,
                 is_parent=False,
                 description=request.data.get("description", ""),

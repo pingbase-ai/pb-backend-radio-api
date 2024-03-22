@@ -182,7 +182,7 @@ class VoiceNote(CreatedModifiedModel):
     def create_voice_note(
         cls,
         sender,
-        reciver,
+        receiver,
         audio_file_url,
         organization,
         is_parent,
@@ -191,7 +191,7 @@ class VoiceNote(CreatedModifiedModel):
     ):
         voice_note = cls(
             sender=sender,
-            reciver=reciver,
+            receiver=receiver,
             audio_file_url=audio_file_url,
             description=description,
             organization=organization,
