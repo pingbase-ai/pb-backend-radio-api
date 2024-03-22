@@ -71,6 +71,8 @@ MIDDLEWARE = [
     "master_mind.middleware.TimingMiddleware",
 ]
 
+CORS_ALLOWED_HEADERS = ["Content-Type", "organization-token"]
+
 ROOT_URLCONF = "master_mind.urls"
 
 TEMPLATES = [
