@@ -10,16 +10,10 @@ logger = logging.getLogger("django")
 
 
 # Create your views here.
+# slack_url = f"https://slack.com/oauth/v2/authorize?client_id={settings.SLACK_CLIENT_ID}&scope=incoming-webhook,chat:write,chat:write.customize&redirect_uri={settings.SLACK_REDIRECT_URI}"
 class SlackIntegrationAPIView(CustomAPIView):
     def get(self, request, *args, **kwargs):
-        # Return the slack integration page
-        slack_url = f"https://slack.com/oauth/v2/authorize?client_id={settings.SLACK_CLIENT_ID}&scope=incoming-webhook&redirect_uri={settings.SLACK_REDIRECT_URI}"
-
-        return Response({"slack_url": slack_url}, status=status.HTTP_200_OK)
-
-    def post(self, request, *args, **kwargs):
-        # Your code logic here
-        code = request.GET.get("code")
+        code = request.query_params.get("code", None)
         response = requests.post(
             "https://slack.com/api/oauth.v2.access",
             data={
@@ -36,3 +30,9 @@ class SlackIntegrationAPIView(CustomAPIView):
         return Response(
             {"message": "Slack integration successful"}, status=status.HTTP_200_OK
         )
+
+
+class SlackAuthUrlAPIView(CustomAPIView):
+    def get(self, request, *args, **kwargs):
+        slack_url = f"https://slack.com/oauth/v2/authorize?client_id={settings.SLACK_CLIENT_ID}&scope=incoming-webhook,chat:write,chat:write.customize&redirect_uri={settings.SLACK_REDIRECT_URI}"
+        return Response({"slack_url": slack_url}, status=status.HTTP_200_OK)
