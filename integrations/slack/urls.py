@@ -7,5 +7,5 @@ urlpatterns = [
         views.SlackIntegrationAPIView.as_view(),
         name="slack_integration",
     ),
-    path("auth_url", views.SlackAuthUrlAPIView.as_view(), name="slack_auth_url"),
+    path("get_status", views.SlackAuthUrlAPIView.as_view(), name="slack_auth_url"),
 ]

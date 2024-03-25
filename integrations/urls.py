@@ -2,7 +2,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path(
-        "slack",
+        "slack/",
         include("integrations.slack.urls"),
     ),
 ]

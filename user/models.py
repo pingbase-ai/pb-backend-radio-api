@@ -165,8 +165,6 @@ class Organization(CreatedModifiedModel):
         related_name="onboarded_organization",
     )
 
-    slack_token = models.TextField(blank=True, null=True)
-
     # Any other specific fields for Organization
 
     # You might want to add a __str__ method to display something meaningful in the admin
