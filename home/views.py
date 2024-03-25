@@ -931,6 +931,28 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
             except Exception as e:
                 logger.error(f"Error while publishing call scheduled event: {e}")
 
+            try:
+                org = call.organization
+                endUser = instance.caller.end_user
+                user_details = endUser.get_user_details()
+                user_details_message = create_message_compact(user_details)
+                message = f"User {user_details['username']} is calling :slack_call: \n {user_details_message}"
+
+                SlackOAuthObj = SlackOAuth.objects.filter(organization=org).first()
+                if SlackOAuthObj and SlackOAuthObj.is_active:
+                    try:
+                        Slack.post_message_to_slack_async(
+                            access_token=SlackOAuthObj.access_token,
+                            channel_id=SlackOAuthObj.channel_id,
+                            message=message,
+                        )
+                    except Exception as e:
+                        logger.error(f"Error while sending slack notification: 1 {e}")
+                else:
+                    logger.error("SlackOAuthObj not found or is inactive")
+            except Exception as e:
+                logger.error(f"Error while sending slack notification: {e}")
+
             return Response(
                 {
                     "message": "Call scheduled",

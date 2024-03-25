@@ -70,7 +70,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
 
     def get_linkedin(self, obj):
 
-        return None
+        return obj.linkedin
 
     class Meta:
         model = EndUser
