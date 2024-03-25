@@ -88,11 +88,12 @@ class SlackAuthUrlAPIView(CustomAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         try:
-            slackOAuthObj = SlackOAuth.objects.get(organization=organizationObj)
-
-            is_slack_integration_active = slackOAuthObj.is_active
+            slackOAuthObj = SlackOAuth.objects.filter(
+                organization=organizationObj
+            ).first()
 
             if slackOAuthObj:
+                is_slack_integration_active = slackOAuthObj.is_active
                 return Response(
                     {
                         "message": "Slack integration already exists",
