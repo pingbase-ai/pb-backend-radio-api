@@ -93,7 +93,7 @@ class SignUpView(CustomGenericAPIView):
                 if not user or not client:
                     return Response(
                         {"message": "User/client does not exist."},
-                        status=status.HTTP_200_OK,
+                        status=status.HTTP_400_BAD_REQUEST,
                     )
                 if str(client.organization.name).lower() != str(company_name).lower():
                     return Response(
@@ -145,6 +145,11 @@ class SignUpView(CustomGenericAPIView):
         password = data.get("password")
         company = data.get("company")
 
+        if not email or not password or not company:
+            return Response(
+                {"message": "Email, password and company name are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if type == "invitee":
             user = User.objects.filter(email=email).first()
 
@@ -187,6 +192,12 @@ class SignUpView(CustomGenericAPIView):
                 # first create an organization with company name
                 # check if the organization exists already
                 organization = Organization.objects.filter(name=company).first()
+
+                if organization:
+                    return Response(
+                        {"message": "Organization already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
                 if not organization:
                     organization = Organization.objects.create(name=company)
@@ -405,6 +416,14 @@ class InviteTeamateView(CustomGenericAPIView):
 
             client.save()
 
+        # if onboarded_by is not set then set to this user
+        try:
+            if not organization.onboarded_by:
+                organization.onboarded_by = client
+                organization.save()
+        except Exception as e:
+            logger.error(f"Error while setting onboarded_by: {e}")
+
         return Response(user_data, status=status.HTTP_201_CREATED)
 
 
@@ -484,6 +503,7 @@ class OnboardingView(CustomAPIView):
         data = request.data
         company = data.get("company")
         organization = Organization.objects.filter(name=company).first()
+        user = request.user
         if not organization:
             return Response(
                 {"message": "Organization doesn't exist"},
@@ -672,7 +692,26 @@ class OnboardingView(CustomAPIView):
             return Response(
                 {"message": "Auto send welcome note set"}, status=status.HTTP_200_OK
             )
-
+        elif type == "onboarded_by":
+            try:
+                client = user.client
+                if not organization.onboarded_by:
+                    organization.onboarded_by = client
+                    organization.save()
+                    return Response(
+                        {"message": "Set onboarded_by done"}, status=status.HTTP_200_OK
+                    )
+                else:
+                    return Response(
+                        {"message": "Onboarded by already set"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            except Exception as e:
+                logger.error(f"Error: {e}")
+                return Response(
+                    {"message": "Something went wrong"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
         else:
             return Response(
                 {"message": "Invalid onboarding type"},
@@ -916,7 +955,6 @@ class EmailVerificationView(CustomAPIView):
                 user.is_active = True
                 user.save()
 
-            # redirect the user to frontend
             base_url = "https://app.pingbase.ai/signup"
             base_url_2 = "https://app.pingbase.ai/login"
             query_params = f"?email={user.email}&company_name={company_name}"

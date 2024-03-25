@@ -180,6 +180,8 @@ class OfficeHours(CreatedModifiedModel):
     open_time = models.TimeField()
     close_time = models.TimeField()
     is_open = models.BooleanField(default=True)
+    # timezone offset in mins
+    timezone_offset = models.IntegerField(default=0, blank=True, null=True)
 
     def get_weekday_display(self):
         return dict(WEEKDAYS)[self.weekday]
