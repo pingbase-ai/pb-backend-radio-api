@@ -7,6 +7,7 @@ from user.models import Organization
 from django.shortcuts import redirect
 from .models import SlackOAuth
 from rest_framework.permissions import IsAuthenticated
+from slack_sdk import WebClient
 
 import urllib.parse
 import json
@@ -18,6 +19,7 @@ logger = logging.getLogger("django")
 # Create your views here.
 # slack_url = f"https://slack.com/oauth/v2/authorize?client_id={settings.SLACK_CLIENT_ID}&scope=incoming-webhook,chat:write,chat:write.customize&redirect_uri={settings.SLACK_REDIRECT_URI}"
 class SlackIntegrationAPIView(CustomAPIView):
+
     def get(self, request, *args, **kwargs):
         code = request.query_params.get("code", None)
         state = request.query_params.get("state", None)
@@ -38,6 +40,7 @@ class SlackIntegrationAPIView(CustomAPIView):
             )
             data = response.json()
             access_token = data.get("access_token")
+            channel_id = data.get("incoming_webhook").get("channel_id")
 
             try:
                 obj, _ = SlackOAuth.objects.update_or_create(
@@ -47,7 +50,17 @@ class SlackIntegrationAPIView(CustomAPIView):
                 obj.access_token = access_token
                 obj.is_active = True
                 obj.meta = data
+                obj.channel_id = channel_id
                 obj.save()
+
+                try:
+                    self.join_channel(access_token, channel_id)
+                except Exception as e:
+                    logger.error(f"Error joining channel: {e}")
+                    return Response(
+                        {"error": "Error while integrating slack"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
 
             except Organization.DoesNotExist:
                 logger.error(f"Organization not found: {company}")
@@ -63,6 +76,15 @@ class SlackIntegrationAPIView(CustomAPIView):
                 {"error": "Error while integrating slack"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @staticmethod
+    def join_channel(access_token: str, channel_id: str) -> None:
+        client = WebClient(token=access_token)
+        try:
+            response = client.conversations_join(channel=channel_id)
+            print(f"Joined channel: {response['channel']['name']}")
+        except Exception as e:
+            print(f"Error joining channel: {e}")
 
 
 class SlackAuthUrlAPIView(CustomAPIView):
@@ -105,7 +127,7 @@ class SlackAuthUrlAPIView(CustomAPIView):
                 additional_data = {"company": company_name, "referer": referer}
                 state_param = urllib.parse.quote_plus(json.dumps(additional_data))
 
-                slack_url = f"https://slack.com/oauth/v2/authorize?client_id={settings.SLACK_CLIENT_ID}&scope=incoming-webhook,chat:write,chat:write.customize&redirect_uri={settings.SLACK_REDIRECT_URI}&state={state_param}"
+                slack_url = f"https://slack.com/oauth/v2/authorize?client_id={settings.SLACK_CLIENT_ID}&scope=incoming-webhook,chat:write,chat:write.customize,channels:join&redirect_uri={settings.SLACK_REDIRECT_URI}&state={state_param}"
                 return Response({"slack_url": slack_url}, status=status.HTTP_200_OK)
 
         except Exception as e:

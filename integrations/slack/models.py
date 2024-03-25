@@ -7,6 +7,7 @@ from user.models import Organization
 
 class SlackOAuth(CreatedModifiedModel):
     access_token = models.TextField(null=True, blank=True)
+    channel_id = models.CharField(max_length=255, null=True, blank=True)
     meta = models.TextField(null=True, blank=True)
     organization = models.OneToOneField(
         Organization,
