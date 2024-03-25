@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     "events",
     "home",
     "dyte",
+    "integrations",
+    "integrations.slack",
 ]
 
 MIDDLEWARE = [
