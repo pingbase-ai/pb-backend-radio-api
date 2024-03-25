@@ -299,7 +299,7 @@ class DyteWebhookView(CustomGenericAPIView):
                 )
                 if recordingStatus == "UPLOADED":
                     filename = recording.get("outputFileName")
-                    uploaded_url = f"{settings.AZURE_STORAGE_BLOB_URL}/{meeting_title}_{meeting_id}_{filename}"
+                    uploaded_url = f"{settings.DYTE_AZURE_BLOB_URL}/{meeting_title}_{meeting_id}_{filename}"
                     calEvent = Call.objects.filter(session_id=session_id).first()
                     calEvent.file_url = uploaded_url
                     calEvent.save()
