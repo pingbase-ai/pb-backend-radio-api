@@ -5,6 +5,8 @@ from django.conf import settings
 from user.models import EndUser
 from events.models import Event
 from home.event_types import LOGGED_IN, SUCCESS, MANUAL, LOGIN, VOICE_NOTE, CALL
+from integrations.slack.utils import create_message_compact, Slack
+from integrations.slack.models import SlackOAuth
 
 
 import logging
@@ -36,8 +38,31 @@ def create_login_event(sender, instance, created, **kwargs):
                 is_parent=False,
                 storage_url=None,
             )
+
         except Exception as e:
             logger.error(f"Error while creating login event: {e}")
+
+        finally:
+            # TODO to add slack notification when a user tab becomes active
+            # send notification to slack
+            org = instance.organization
+            endUser = instance.end_user
+            user_details = endUser.get_user_details()
+            user_details_message = create_message_compact(user_details)
+            message = f"User {user_details['username']} logged into the platform :technologist:  \n {user_details_message}"
+
+            SlackOAuthObj = SlackOAuth.objects.filter(organization=org).first()
+            if SlackOAuthObj and SlackOAuthObj.is_active:
+                try:
+                    Slack.post_message_to_slack_async(
+                        access_token=SlackOAuthObj.access_token,
+                        channel_id=SlackOAuthObj.channel_id,
+                        message=message,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while sending slack notification: 1 {e}")
+            else:
+                logger.error("SlackOAuthObj not found or is inactive")
 
 
 @receiver(post_save, sender=VoiceNote)
@@ -65,6 +90,26 @@ def create_voice_note_event(sender, instance, created, **kwargs):
             )
         except Exception as e:
             logger.error(f"Error while creating voice note event: {e}")
+        finally:
+            if not instance.is_parent:
+                org = instance.organization
+                endUser = instance.sender.end_user
+                user_details = endUser.get_user_details()
+                user_details_message = create_message_compact(user_details)
+                message = f"User {user_details['username']} sent a voice note :notes: \n {user_details_message}"
+
+                SlackOAuthObj = SlackOAuth.objects.filter(organization=org).first()
+                if SlackOAuthObj and SlackOAuthObj.is_active:
+                    try:
+                        Slack.post_message_to_slack_async(
+                            access_token=SlackOAuthObj.access_token,
+                            channel_id=SlackOAuthObj.channel_id,
+                            message=message,
+                        )
+                    except Exception as e:
+                        logger.error(f"Error while sending slack notification: 1 {e}")
+                else:
+                    logger.error("SlackOAuthObj not found or is inactive")
     else:
         # update the existing record of event
         try:

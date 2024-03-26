@@ -62,7 +62,9 @@ class TasksClientAPIView(CustomAPIView):
         meetings = Meeting.objects.filter(
             organization=organization, attendees=user, status="scheduled"
         )
-        calls = Call.objects.filter(organization=organization, is_seen=False)
+        calls = Call.objects.filter(
+            organization=organization, is_seen=False, event_type=MISSED_THEIR_CALL
+        )
         voice_notes = VoiceNote.objects.filter(organization=organization, is_seen=False)
 
         # Return the serialized data as a response
@@ -825,6 +827,23 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                 else:
                     agent_name = call.receiver.first_name if call.receiver else None
 
+                # publish the event to the enduser
+                pusher_data_obj = {
+                    "source_event_type": "missed-call",
+                    "id": str(call.call_id),
+                    "sender": str(call.caller.first_name),
+                    "storage_url": "",
+                }
+                try:
+                    publish_event_to_user(
+                        str(user.client.organization.name),
+                        "private",
+                        encode_base64(f"{call.receiver.id}"),
+                        "client-event",
+                        pusher_data_obj,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while publishing call scheduled event: {e}")
                 try:
                     event = Event.create_event_async(
                         event_type=MISSED_OUR_CALL,
@@ -911,6 +930,28 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                 )
             except Exception as e:
                 logger.error(f"Error while publishing call scheduled event: {e}")
+
+            try:
+                org = call.organization
+                endUser = instance.caller.end_user
+                user_details = endUser.get_user_details()
+                user_details_message = create_message_compact(user_details)
+                message = f"User {user_details['username']} is calling :slack_call: \n {user_details_message}"
+
+                SlackOAuthObj = SlackOAuth.objects.filter(organization=org).first()
+                if SlackOAuthObj and SlackOAuthObj.is_active:
+                    try:
+                        Slack.post_message_to_slack_async(
+                            access_token=SlackOAuthObj.access_token,
+                            channel_id=SlackOAuthObj.channel_id,
+                            message=message,
+                        )
+                    except Exception as e:
+                        logger.error(f"Error while sending slack notification: 1 {e}")
+                else:
+                    logger.error("SlackOAuthObj not found or is inactive")
+            except Exception as e:
+                logger.error(f"Error while sending slack notification: {e}")
 
             return Response(
                 {

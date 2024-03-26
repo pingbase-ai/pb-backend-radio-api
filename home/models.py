@@ -208,7 +208,7 @@ class EndUserLogin(CreatedModifiedModel):
         EndUser, on_delete=models.CASCADE, related_name="logins"
     )
     last_login = models.DateTimeField(auto_now=True)
-    Organization = models.ForeignKey(
+    organization = models.ForeignKey(
         Organization, on_delete=models.DO_NOTHING, related_name="end_user_logins"
     )
     event_type = models.CharField(max_length=255, default="Logged In")
@@ -219,7 +219,7 @@ class EndUserLogin(CreatedModifiedModel):
 
     @staticmethod
     def create_login(end_user, organization):
-        login = EndUserLogin(end_user=end_user, Organization=organization)
+        login = EndUserLogin(end_user=end_user, organization=organization)
         login.save()
         return login
 

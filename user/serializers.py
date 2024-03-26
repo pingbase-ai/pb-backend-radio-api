@@ -70,7 +70,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
 
     def get_linkedin(self, obj):
 
-        return None
+        return obj.linkedin
 
     class Meta:
         model = EndUser
@@ -343,9 +343,11 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
 
     def get_widget(self, obj):
         try:
-            results = obj.widgets.all()
-            return WidgetSerializer(results, many=True).data
+            results = Widget.objects.filter(organization=obj).first()
+
+            return WidgetSerializer(results, many=False).data
         except Exception as e:
+            print(f"Error while fetching widget: {e}")
             results = {}
         return results
 

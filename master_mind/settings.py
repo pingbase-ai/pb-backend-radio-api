@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     "events",
     "home",
     "dyte",
+    "integrations",
+    "integrations.slack",
 ]
 
 MIDDLEWARE = [
@@ -255,5 +257,12 @@ AZURE_STORAGE_ACCOUNT_KEY = os.getenv("AZURE_STORAGE_ACCOUNT_KEY")
 AZURE_STORAGE_CONTAINER_NAME = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
 DYTE_AZURE_BLOB_URL = os.getenv("DYTE_AZURE_BLOB_URL")
 DYTE_WEBHOOK_ID = os.getenv("DYTE_WEBHOOK_ID")
+
+# UPLEAD
 UPLEAD_API_KEY = os.getenv("UPLEAD_API_KEY")
 UPLEAD_BASE_URL = os.getenv("UPLEAD_BASE_URL")
+
+# SLACK
+SLACK_CLIENT_ID = os.getenv("SLACK_CLIENT_ID")
+SLACK_REDIRECT_URI = os.getenv("SLACK_REDIRECT_URI")
+SLACK_CLIENT_SECRET = os.getenv("SLACK_CLIENT_SECRET")

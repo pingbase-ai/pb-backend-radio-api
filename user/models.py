@@ -180,6 +180,8 @@ class OfficeHours(CreatedModifiedModel):
     open_time = models.TimeField()
     close_time = models.TimeField()
     is_open = models.BooleanField(default=True)
+    # timezone offset in mins
+    timezone_offset = models.IntegerField(default=0, blank=True, null=True)
 
     def get_weekday_display(self):
         return dict(WEEKDAYS)[self.weekday]
@@ -237,6 +239,9 @@ class EndUser(CreatedModifiedModel):
     trail_type = models.CharField(max_length=200, null=True, blank=True)
     priority = models.CharField(max_length=200, choices=PRIORITY_CHOICES, default=LOW)
     company = models.CharField(max_length=200, null=True, blank=True)
+    linkedin = models.TextField(null=True, blank=True)
+    city = models.CharField(max_length=200, null=True, blank=True)
+    country = models.CharField(max_length=200, null=True, blank=True)
 
     objects = EndUserManager()
 
@@ -248,6 +253,15 @@ class EndUser(CreatedModifiedModel):
             + " - "
             + self.organization.name
         )
+
+    def get_user_details(self):
+        return {
+            "username": f"{self.user.first_name} {self.user.last_name}",
+            "company": self.company,
+            "linkedin": self.linkedin,
+            "city": self.city,
+            "country": self.country,
+        }
 
 
 class WelcomeNote(CreatedModifiedModel):

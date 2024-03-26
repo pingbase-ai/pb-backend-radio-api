@@ -25,4 +25,5 @@ urlpatterns = [
     path("api/v1/events/", include("events.urls")),
     path("api/v1/home/", include("home.urls")),
     path("api/v1/meeting/", include("dyte.urls")),
+    path("api/v1/integrations/", include("integrations.urls")),
 ]
