@@ -33,7 +33,7 @@ class Mail:
     @staticmethod
     def send_code_email(data):
         task_id = async_task(
-            "user.utils.send_email_task",
+            "user.utils.send_code_email_task",
             data["email_subject"],
             data["code_snippet"],
             DEFAULT_FROM_EMAIL,

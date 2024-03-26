@@ -723,10 +723,8 @@ class OnboardingView(CustomAPIView):
         elif type == "share_code_instructions":
             email = data.get("email")
 
-            integration_code_snippet
-
             intergration_data = {
-                "subject": "Integrate PingBase Launcher & Widget",
+                "email_subject": "Integrate PingBase Launcher & Widget",
                 "code_snippet": integration_code_snippet,
                 "to_email": email,
             }
@@ -734,7 +732,7 @@ class OnboardingView(CustomAPIView):
                 Mail.send_code_email(intergration_data)
 
             except Exception as e:
-                logger.error(f"Error while sending code snippet")
+                logger.error(f"Error while sending code snippet: {e}")
 
             return Response(
                 {"message": "Code instructions shared successfully!"},
