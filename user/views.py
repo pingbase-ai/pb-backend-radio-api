@@ -53,6 +53,7 @@ from infra_utils.views import (
 from infra_utils.utils import password_rule_check, generate_strong_password
 from django.db.models import Q
 from django.shortcuts import redirect
+from .constants import integration_code_snippet
 
 import logging
 import json
@@ -719,6 +720,27 @@ class OnboardingView(CustomAPIView):
                     {"message": "Something went wrong"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
+        elif type == "share_code_instructions":
+            email = data.get("email")
+
+            integration_code_snippet
+
+            intergration_data = {
+                "subject": "Integrate PingBase Launcher & Widget",
+                "code_snippet": integration_code_snippet,
+                "to_email": email,
+            }
+            try:
+                Mail.send_code_email(intergration_data)
+
+            except Exception as e:
+                logger.error(f"Error while sending code snippet")
+
+            return Response(
+                {"message": "Code instructions shared successfully!"},
+                status=status.HTTP_200_OK,
+            )
+
         else:
             return Response(
                 {"message": "Invalid onboarding type"},
