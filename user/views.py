@@ -163,12 +163,16 @@ class SignUpView(CustomGenericAPIView):
                     )
                 user.set_password(password)
                 user.save()
+                return Response(
+                    {"message": "Password set successfully."}, status=status.HTTP_200_OK
+                )
             except Exception as e:
                 logger.error(f"Error: {e}")
                 return Response(
                     {"message": "Something went wrong, please try again later"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
+
         else:
             try:
                 if not password_rule_check(password):
@@ -681,6 +685,9 @@ class OnboardingView(CustomAPIView):
         elif type == "auto_send_welcome_note":
             auto_send_welcome_note = data.get("auto_send_welcome_note")
             try:
+                if auto_send_welcome_note == True:
+                    automatically_sent_after = data.get("automatically_sent_after")
+                    organization.automatically_sent_after = automatically_sent_after
                 organization.auto_send_welcome_note = auto_send_welcome_note
                 organization.save()
             except Exception as e:
