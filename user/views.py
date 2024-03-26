@@ -687,7 +687,7 @@ class OnboardingView(CustomAPIView):
             try:
                 if auto_send_welcome_note == True:
                     automatically_sent_after = data.get("automatically_sent_after")
-                    organization.automatically_sent_after = automatically_sent_after
+                    organization.auto_sent_after = automatically_sent_after
                 organization.auto_send_welcome_note = auto_send_welcome_note
                 organization.save()
             except Exception as e:
