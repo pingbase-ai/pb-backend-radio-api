@@ -325,6 +325,7 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
     auto_send_welcome_note = serializers.SerializerMethodField()
     onboarded = serializers.SerializerMethodField()
     onboarded_by = serializers.SerializerMethodField()
+    auto_sent_after = serializers.SerializerMethodField()
 
     def get_name(self, obj):
         return obj.name
@@ -382,6 +383,9 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
     def get_onboarded(self, obj):
         return obj.onboarded
 
+    def get_auto_sent_after(self, obj):
+        return obj.auto_sent_after
+
     class Meta:
         model = Organization
         fields = [
@@ -399,6 +403,7 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
             "auto_send_welcome_note",
             "onboarded",
             "onboarded_by",
+            "auto_sent_after",
         ]
 
 

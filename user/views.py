@@ -53,6 +53,7 @@ from infra_utils.views import (
 from infra_utils.utils import password_rule_check, generate_strong_password
 from django.db.models import Q
 from django.shortcuts import redirect
+from .constants import integration_code_snippet
 
 import logging
 import json
@@ -163,12 +164,16 @@ class SignUpView(CustomGenericAPIView):
                     )
                 user.set_password(password)
                 user.save()
+                return Response(
+                    {"message": "Password set successfully."}, status=status.HTTP_200_OK
+                )
             except Exception as e:
                 logger.error(f"Error: {e}")
                 return Response(
                     {"message": "Something went wrong, please try again later"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
+
         else:
             try:
                 if not password_rule_check(password):
@@ -681,6 +686,9 @@ class OnboardingView(CustomAPIView):
         elif type == "auto_send_welcome_note":
             auto_send_welcome_note = data.get("auto_send_welcome_note")
             try:
+                if auto_send_welcome_note == True:
+                    automatically_sent_after = data.get("automatically_sent_after")
+                    organization.auto_sent_after = automatically_sent_after
                 organization.auto_send_welcome_note = auto_send_welcome_note
                 organization.save()
             except Exception as e:
@@ -712,6 +720,25 @@ class OnboardingView(CustomAPIView):
                     {"message": "Something went wrong"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
+        elif type == "share_code_instructions":
+            email = data.get("email")
+
+            intergration_data = {
+                "email_subject": "Integrate PingBase Launcher & Widget",
+                "code_snippet": integration_code_snippet,
+                "to_email": email,
+            }
+            try:
+                Mail.send_code_email(intergration_data)
+
+            except Exception as e:
+                logger.error(f"Error while sending code snippet: {e}")
+
+            return Response(
+                {"message": "Code instructions shared successfully!"},
+                status=status.HTTP_200_OK,
+            )
+
         else:
             return Response(
                 {"message": "Invalid onboarding type"},
@@ -956,7 +983,7 @@ class EmailVerificationView(CustomAPIView):
                 user.save()
 
             base_url = "https://app.pingbase.ai/signup"
-            base_url_2 = "https://app.pingbase.ai/login"
+            base_url_2 = "https://app.pingbase.ai"
             query_params = f"?email={user.email}&company_name={company_name}"
             redirect_url = base_url + query_params
             if all_clients_objects_count == 1:

@@ -144,6 +144,7 @@ class Organization(CreatedModifiedModel):
     website = models.CharField(max_length=256, blank=True, default="")
     token = models.UUIDField(max_length=64, default=uuid.uuid4, editable=False)
     auto_send_welcome_note = models.BooleanField(default=True)
+    auto_sent_after = models.CharField(max_length=5, blank=True, default="", null=True)
 
     welcome_note = models.ForeignKey(
         "WelcomeNote", on_delete=models.DO_NOTHING, null=True, blank=True
