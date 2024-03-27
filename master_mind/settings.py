@@ -209,6 +209,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://js.pusher.com",
     "http://127.0.0.1:3000",
     "http://localhost:8080",
+    "https://app.pingbase.ai",
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -220,6 +221,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://js.pusher.com",
     "http://127.0.0.1:3000",
     "http://localhost:8080",
+    "https://app.pingbase.ai",
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
