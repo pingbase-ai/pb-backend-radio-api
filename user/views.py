@@ -983,7 +983,7 @@ class EmailVerificationView(CustomAPIView):
                 user.save()
 
             base_url = "https://app.pingbase.ai/signup"
-            base_url_2 = "https://app.pingbase.ai/login"
+            base_url_2 = "https://app.pingbase.ai"
             query_params = f"?email={user.email}&company_name={company_name}"
             redirect_url = base_url + query_params
             if all_clients_objects_count == 1:
