@@ -161,7 +161,7 @@ class Organization(CreatedModifiedModel):
     onboarded = models.BooleanField(default=False)
     onboarded_by = models.OneToOneField(
         "Client",
-        on_delete=models.DO_NOTHING,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="onboarded_organization",
     )
@@ -209,7 +209,10 @@ class Client(CreatedModifiedModel):
     department = models.CharField(max_length=256, null=True, blank=True)
     # team_office_hours = models.CharField(max_length=256)
     organization = models.ForeignKey(
-        Organization, on_delete=models.DO_NOTHING, related_name="clients"
+        Organization,
+        on_delete=models.SET_NULL,
+        related_name="clients",
+        null=True,
     )
     role = models.CharField(max_length=200, choices=ROLE_CHOICES, default=STANDARD_USER)
     onboarded = models.BooleanField(default=False)
