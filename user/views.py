@@ -238,7 +238,7 @@ class SignUpView(CustomGenericAPIView):
                 html_email_body = (
                     f"Hi,<br><br>"
                     f"{message}<br><br>"
-                    f"<a href='{verification_link}'>Activate your PingBase account.</a>"
+                    f"<a href='{verification_link}'>Activate your PingBase account</a>"
                     f"<br><br>Thanks,<br>Team PingBase<br>"
                 )
                 # email_body = "Hi " + user.email + message + verification_link
@@ -418,7 +418,7 @@ class InviteTeamateView(CustomGenericAPIView):
             html_email_body = (
                 f"Hi there,<br><br>"
                 f"{message}<br><br>"
-                f"{verification_link}"
+                f"<a href='{verification_link}'>Complete PingBase onboarding</a>"
                 f"<br><br>Thanks,<br>Team PingBase<br>"
             )
             # email_body = "Hi " + user.email + message + verification_link
