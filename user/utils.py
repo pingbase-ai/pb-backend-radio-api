@@ -19,10 +19,14 @@ def send_email_task(subject, body, html_body, from_email, to_email):
     )
 
 
-def send_code_email_task(subject, code_snippet, from_email, to_email):
-    email_body = f"Here is your code snippet:\n\n{code_snippet}"
+def send_code_email_task(subject, html_email_body, from_email, to_email):
     send_mail(
-        subject, email_body, f"PingBase <{from_email}>", [to_email], fail_silently=False
+        subject,
+        None,
+        f"PingBase <{from_email}>",
+        [to_email],
+        fail_silently=False,
+        html_message=html_email_body,
     )
 
 
@@ -47,7 +51,7 @@ class Mail:
         task_id = async_task(
             "user.utils.send_code_email_task",
             data["email_subject"],
-            data["code_snippet"],
+            data["html_email_body"],
             DEFAULT_FROM_EMAIL,
             data["to_email"],
         )
