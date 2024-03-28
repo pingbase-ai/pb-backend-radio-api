@@ -187,12 +187,16 @@ class SignUpView(CustomGenericAPIView):
                 user = User.objects.filter(email=email).first()
 
                 if user:
-                    client = Client.objects.filter(user=user).first()
-                    if client:
-                        return Response(
-                            {"message": "Client already exists."},
-                            status=status.HTTP_400_BAD_REQUEST,
-                        )
+                    return Response(
+                        {"message": "User already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                    # client = Client.objects.filter(user=user).first()
+                    # if client:
+                    #     return Response(
+                    #         {"message": "Client already exists."},
+                    #         status=status.HTTP_400_BAD_REQUEST,
+                    #     )
 
                 # first create an organization with company name
                 # check if the organization exists already
@@ -229,12 +233,19 @@ class SignUpView(CustomGenericAPIView):
                     + "?token="
                     + str(token)
                 )
-                message = ". Ready to serve? Use the link below to verify your email and secure your spot in the Pingbase arena. \nIf you received this by a wild shot and weren’t expecting any account verification email, feel free to ignore this volley. \n"
-                email_body = "Hi " + user.email + message + verification_link
+
+                message = "Hit the link below to verify your email and activate your PingBase account."
+                html_email_body = (
+                    f"Hi {user.email},<br><br>"
+                    f"{message}<br>"
+                    f"<a href='{verification_link}'>Activate your PingBase account.</a>"
+                )
+                # email_body = "Hi " + user.email + message + verification_link
                 data = {
-                    "email_body": email_body,
+                    "html_email_body": html_email_body,
                     "to_email": user.email,
                     "email_subject": "Verify your email",
+                    "email_body": None,
                 }
                 try:
                     Mail.send_email(data)

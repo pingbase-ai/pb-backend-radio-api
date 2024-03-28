@@ -8,23 +8,35 @@ logger = logging.getLogger("django")
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 
 
-def send_email_task(subject, body, from_email, to_email):
-    send_mail(subject, body, from_email, [to_email], fail_silently=False)
+def send_email_task(subject, body, html_body, from_email, to_email):
+    send_mail(
+        subject,
+        body,
+        f"PingBase <{from_email}>",
+        [to_email],
+        fail_silently=False,
+        html_message=html_body,
+    )
 
 
 def send_code_email_task(subject, code_snippet, from_email, to_email):
     email_body = f"Here is your code snippet:\n\n{code_snippet}"
-    send_mail(subject, email_body, from_email, [to_email], fail_silently=False)
+    send_mail(
+        subject, email_body, f"PingBase <{from_email}>", [to_email], fail_silently=False
+    )
 
 
 class Mail:
     @staticmethod
     def send_email(data):
         # Schedule the standalone email function as an asynchronous task
+
+        html_body = data.get("html_email_body", None)
         task_id = async_task(
             "user.utils.send_email_task",
             data["email_subject"],
             data["email_body"],
+            html_body,
             DEFAULT_FROM_EMAIL,
             data["to_email"],
         )
