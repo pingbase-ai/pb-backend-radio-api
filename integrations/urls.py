@@ -6,4 +6,5 @@ urlpatterns = [
         include("integrations.slack.urls"),
     ),
     path("google/", include("integrations.google_oauth.urls")),
+    path("outlook/", include("integrations.outlook.urls")),
 ]

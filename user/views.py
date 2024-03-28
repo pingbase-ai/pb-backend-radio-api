@@ -1109,7 +1109,7 @@ class PasswordResetTokenValidationView(CustomGenericAPIView):
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
             # Redirect to frontend
-            base_url = "https://app.pingbase.ai/reset-password"
+            base_url = "https://app.pingbase.ai/update-password"
             query_params = f"?uidb64={uidb64}&token={token}&email={user.email}"
             redirect_url = base_url + query_params
 

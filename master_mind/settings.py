@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "integrations",
     "integrations.slack",
     "integrations.google_oauth",
+    "integrations.outlook",
 ]
 
 MIDDLEWARE = [
@@ -208,6 +209,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://js.pusher.com",
     "http://127.0.0.1:3000",
     "http://localhost:8080",
+    "https://app.pingbase.ai",
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -219,6 +221,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://js.pusher.com",
     "http://127.0.0.1:3000",
     "http://localhost:8080",
+    "https://app.pingbase.ai",
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
@@ -261,6 +264,12 @@ AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
 AZURE_STORAGE_ACCOUNT_KEY = os.getenv("AZURE_STORAGE_ACCOUNT_KEY")
 AZURE_STORAGE_CONTAINER_NAME = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
 AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+AZURE_PINGBASE_APP_CLIENT_ID = os.getenv("AZURE_PINGBASE_APP_CLIENT_ID")
+AZURE_PINGBASE_APP_TENANT_ID = os.getenv("AZURE_PINGBASE_APP_TENANT_ID")
+AZURE_PINGBASE_APP_CLIENT_SECRET_ID = os.getenv("AZURE_PINGBASE_APP_CLIENT_SECRET_ID")
+AZURE_PINGBASE_APP_CLIENT_SECRET_VALUE = os.getenv(
+    "AZURE_PINGBASE_APP_CLIENT_SECRET_VALUE"
+)
 
 
 # UPLEAD

@@ -1,8 +1,6 @@
 # Description: This file contains the views for the Google OAuth integration.
 # Create your views here.
 from django.shortcuts import redirect
-
-
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import GoogleOAuth
@@ -28,7 +26,7 @@ CLIENT_SECRETS_FILE = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
     ensure_credentials_file(),
 )
-
+# TODO - Need to handle token expiry
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 # This variable specifies the name of a file that contains the OAuth 2.0
 # information for this application, including its client_id and client_secret.
@@ -42,7 +40,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.profile",
     "openid",
 ]
-REDIRECT_URL = "http://127.0.0.1:8000/api/v1/integrations/google/redirect"
+REDIRECT_URL = "https://api.pingbase.ai/api/v1/integrations/google/redirect"
 
 
 class GoogleCalendarViewInit(CustomGenericAPIView):
