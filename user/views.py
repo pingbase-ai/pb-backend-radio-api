@@ -408,7 +408,11 @@ class InviteTeamateView(CustomGenericAPIView):
         )
         # Add logic to send a dedicated email for onboarding
         total_org_clients = Client.objects.filter(organization=organization).count()
-        if total_org_clients == 2 or "onboarding" in referer.lower():
+        logger.info(
+            f"total_org_clients -{total_org_clients}",
+        )
+        logger.info(f"referer -{referer}")
+        if total_org_clients == 1 or "onboarding" in referer.lower():
             # this means, it's the invite to get onboarded
             message = f"Your colleague, whose email is {request.user.email}, has signed up for PingBase and would like you to complete the onboarding. Click on the link below to get started:"
             html_email_body = (
