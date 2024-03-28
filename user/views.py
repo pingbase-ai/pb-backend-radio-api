@@ -234,7 +234,7 @@ class SignUpView(CustomGenericAPIView):
                 data = {
                     "email_body": email_body,
                     "to_email": user.email,
-                    "email_subject": "Demo Email Verification",
+                    "email_subject": "Verify your email",
                 }
                 try:
                     Mail.send_email(data)
@@ -396,7 +396,7 @@ class InviteTeamateView(CustomGenericAPIView):
         data = {
             "email_body": email_body,
             "to_email": user.email,
-            "email_subject": "Demo Email Verification",
+            "email_subject": "Verify your email",
         }
         try:
             Mail.send_email(data)
@@ -935,7 +935,7 @@ class RegistrationView(generics.GenericAPIView):
             data = {
                 "email_body": email_body,
                 "to_email": user.email,
-                "email_subject": "Demo Email Verification",
+                "email_subject": "Verify your email",
             }
             Mail.send_email(data)
 
@@ -971,9 +971,12 @@ class EmailVerificationView(CustomAPIView):
             user = User.objects.get(id=payload["user_id"])
 
             client = Client.objects.filter(user=user).first()
+            organization = client.organization
 
             # check if the user is the first user of the company
-            all_clients_objects_count = Client.objects.all().count()
+            all_clients_objects_count = Client.objects.filter(
+                organization=organization
+            ).count()
 
             company_name = client.organization.name
 
@@ -1025,7 +1028,7 @@ class ResendVerificationEmailView(CustomAPIView):
                 data = {
                     "email_body": email_body,
                     "to_email": Email,
-                    "email_subject": "Demo Email Verification",
+                    "email_subject": "Verify your email",
                 }
                 Mail.send_email(data)
                 return Response(
