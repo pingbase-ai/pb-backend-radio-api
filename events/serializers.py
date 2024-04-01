@@ -138,9 +138,11 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             return (
                 User.objects.filter(id=obj.destination_user_id)
                 .first()
-                .end_user.sessions
+                .end_user.total_sessions
             )
-        return User.objects.filter(id=obj.source_user_id).first().end_user.sessions
+        return (
+            User.objects.filter(id=obj.source_user_id).first().end_user.total_sessions
+        )
 
     def get_enduser_trail_type(self, obj):
 
