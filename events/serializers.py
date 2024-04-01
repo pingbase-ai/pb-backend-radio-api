@@ -27,8 +27,9 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
     enduser_last_name = serializers.SerializerMethodField()
     enduser_is_online = serializers.SerializerMethodField()
     enduser_last_login = serializers.SerializerMethodField()
-    enduser_role = serializers.SerializerMethodField()
     enduser_email = serializers.SerializerMethodField()
+
+    enduser_role = serializers.SerializerMethodField()
     enduser_company = serializers.SerializerMethodField()
     enduser_sessions = serializers.SerializerMethodField()
     enduser_trail_type = serializers.SerializerMethodField()
@@ -117,8 +118,8 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
 
     def get_enduser_role(self, obj):
         if obj.is_parent:
-            return User.objects.filter(id=obj.destination_user_id).first().role
-        return User.objects.filter(id=obj.source_user_id).first().role
+            return User.objects.filter(id=obj.destination_user_id).first().end_user.role
+        return User.objects.filter(id=obj.source_user_id).first().end_user.role
 
     def get_enduser_email(self, obj):
         if obj.is_parent:
@@ -127,24 +128,38 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
 
     def get_enduser_company(self, obj):
         if obj.is_parent:
-            return User.objects.filter(id=obj.destination_user_id).first().company
-        return User.objects.filter(id=obj.source_user_id).first().company
+            return (
+                User.objects.filter(id=obj.destination_user_id).first().end_user.company
+            )
+        return User.objects.filter(id=obj.source_user_id).first().end_user.company
 
     def get_enduser_sessions(self, obj):
         if obj.is_parent:
-            return User.objects.filter(id=obj.destination_user_id).first().sessions
-        return User.objects.filter(id=obj.source_user_id).first().sessions
+            return (
+                User.objects.filter(id=obj.destination_user_id)
+                .first()
+                .end_user.sessions
+            )
+        return User.objects.filter(id=obj.source_user_id).first().end_user.sessions
 
     def get_enduser_trail_type(self, obj):
 
         if obj.is_parent:
-            return User.objects.filter(id=obj.destination_user_id).first().trail_type
-        return User.objects.filter(id=obj.source_user_id).first().trail_type
+            return (
+                User.objects.filter(id=obj.destination_user_id)
+                .first()
+                .end_user.trail_type
+            )
+        return User.objects.filter(id=obj.source_user_id).first().end_user.trail_type
 
     def get_enduser_linkedin(self, obj):
         if obj.is_parent:
-            return User.objects.filter(id=obj.destination_user_id).first().linkedin
-        return User.objects.filter(id=obj.source_user_id).first().linkedin
+            return (
+                User.objects.filter(id=obj.destination_user_id)
+                .first()
+                .end_user.linkedin
+            )
+        return User.objects.filter(id=obj.source_user_id).first().end_user.linkedin
 
     class Meta:
         model = Event

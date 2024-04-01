@@ -767,6 +767,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                     agent_name = call.receiver.first_name if call.receiver else None
 
                 try:
+                    organization = call.organization
                     event = Event.create_event_async(
                         event_type=ANSWERED_OUR_CALL,
                         source_user_id=call.caller.id,
@@ -780,6 +781,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         interaction_id=call.call_id,
                         is_parent=call.is_parent,
                         storage_url=call.file_url,
+                        organization=organization,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
@@ -796,6 +798,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                     agent_name = call.receiver.first_name if call.receiver else None
 
                 try:
+                    organization = call.organization
                     event = Event.create_event_async(
                         event_type=CALLED_US,
                         source_user_id=call.caller.id,
@@ -809,6 +812,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         interaction_id=call.call_id,
                         is_parent=call.is_parent,
                         storage_url=call.file_url,
+                        organization=organization,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
@@ -845,6 +849,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                 except Exception as e:
                     logger.error(f"Error while publishing call scheduled event: {e}")
                 try:
+                    organization = call.organization
                     event = Event.create_event_async(
                         event_type=MISSED_OUR_CALL,
                         source_user_id=call.caller.id,
@@ -858,6 +863,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         interaction_id=call.call_id,
                         is_parent=call.is_parent,
                         storage_url=call.file_url,
+                        organization=organization,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
@@ -1015,6 +1021,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     agent_name = call.receiver.first_name if call.receiver else None
 
                 try:
+                    organization = call.organization
                     event = Event.create_event_async(
                         event_type=MISSED_THEIR_CALL,
                         source_user_id=call.caller.id,
@@ -1028,6 +1035,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                         interaction_id=call.call_id,
                         is_parent=call.is_parent,
                         storage_url=call.file_url,
+                        organization=organization,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")

@@ -24,6 +24,7 @@ def create_login_event(sender, instance, created, **kwargs):
     )
     if created:
         try:
+            organization = instance.organization
             event = Event.create_event_async(
                 event_type=LOGGED_IN,
                 source_user_id=instance.end_user.user.id,
@@ -37,6 +38,7 @@ def create_login_event(sender, instance, created, **kwargs):
                 interaction_id=instance.login_id,
                 is_parent=False,
                 storage_url=None,
+                organization=organization,
             )
 
         except Exception as e:
@@ -74,6 +76,7 @@ def create_voice_note_event(sender, instance, created, **kwargs):
     # a new voice record
     if created:
         try:
+            orgnization = instance.organization
             event = Event.create_event_async(
                 event_type=VOICE_NOTE,
                 source_user_id=instance.sender.id,
@@ -87,6 +90,7 @@ def create_voice_note_event(sender, instance, created, **kwargs):
                 interaction_id=instance.voice_note_id,
                 is_parent=instance.is_parent,
                 storage_url=instance.audio_file_url,
+                organization=organization,
             )
         except Exception as e:
             logger.error(f"Error while creating voice note event: {e}")

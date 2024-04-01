@@ -117,6 +117,7 @@ class Event(models.Model):
         interaction_id=None,
         is_parent=False,
         storage_url=None,
+        organization=None,
     ):
         """
         Class method to create an Event instance.
@@ -146,6 +147,7 @@ class Event(models.Model):
             interaction_id=interaction_id,
             is_parent=is_parent,
             storage_url=storage_url,
+            organization=organization,
         )
         event.save()
         return event
@@ -165,7 +167,8 @@ class Event(models.Model):
         interaction_type=None,
         interaction_id=None,
         is_parent=False,
-        storage_url=storage_url,
+        storage_url=None,
+        organization=None,
     ):
         """
         Static method to create an Event instance asynchronously.
@@ -196,5 +199,6 @@ class Event(models.Model):
             interaction_id=interaction_id,
             is_parent=is_parent,
             storage_url=storage_url,
+            organization=organization,
         )
         return task_id
