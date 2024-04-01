@@ -1,5 +1,6 @@
 from django.db import models
 from django_q.tasks import async_task
+from user.models import Organization
 
 
 class Event(models.Model):
@@ -90,6 +91,10 @@ class Event(models.Model):
     is_seen_enduser = models.BooleanField(default=False)
 
     storage_url = models.URLField(max_length=2000, blank=True, null=True)
+
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, blank=True, null=True
+    )
 
     # create a string representation for the event model
     def __str__(self):
