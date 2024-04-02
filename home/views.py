@@ -387,9 +387,11 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
         user = request.user
 
         endUserId = request.query_params.get("endUserId")
+        #
+        # endUserObj = EndUser.objects.filter(id=endUserId).first()
 
         sender = user
-        receiver = User.objects.filter(id=endUserId).first()
+        receiver = User.objects.filter(end_user__id=endUserId).first()
         file = request.FILES["file"]
         if not file:
             return Response(
@@ -424,7 +426,7 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
             }
             try:
                 publish_event_to_user(
-                    user.client.organization,
+                    user.client.organization.token,
                     "private",
                     encode_base64(f"{endUserId}"),
                     "client-event",
@@ -432,16 +434,16 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
                 )
             except Exception as e:
                 logger.error(f"Error while publishing voice note created event: {e}")
-            return Response(
-                {"message": "Voice note created"},
-                status=status.HTTP_201_CREATED,
-            )
         except Exception as e:
             logger.error(f"Error while creating voice note: {e}")
             return Response(
                 {"message": "Error while creating voice note"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        return Response(
+            {"message": "Voice note created"},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class ActivitiesViewModifyVoiceNoteClientAPIView(CustomGenericAPIView):
@@ -536,7 +538,7 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
             }
             try:
                 publish_event_to_client(
-                    sender.end_user.organization,
+                    sender.end_user.organization.token,
                     "private",
                     "enduser-event",
                     pusher_data_obj,
@@ -685,7 +687,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
             }
             try:
                 publish_event_to_user(
-                    str(organization.name),
+                    str(organization.token),
                     "private",
                     encode_base64(f"{endUserId}"),
                     "client-event",
@@ -840,7 +842,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                 }
                 try:
                     publish_event_to_user(
-                        str(user.client.organization.name),
+                        str(user.client.organization.token),
                         "private",
                         encode_base64(f"{call.receiver.id}"),
                         "client-event",
@@ -929,7 +931,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
             }
             try:
                 publish_event_to_client(
-                    str(organization.name),
+                    str(organization.token),
                     "private",
                     "enduser-event",
                     pusher_data_obj,
@@ -1005,7 +1007,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                 }
             try:
                 publish_event_to_client(
-                    str(call.organization.name),
+                    str(call.organization.token),
                     "private",
                     "enduser-event",
                     pusher_data_obj,
