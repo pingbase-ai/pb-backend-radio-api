@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "integrations.slack",
     "integrations.google_oauth",
     "integrations.outlook",
+    "integrations.caldotcom",
 ]
 
 MIDDLEWARE = [
@@ -280,3 +281,8 @@ UPLEAD_BASE_URL = os.getenv("UPLEAD_BASE_URL")
 SLACK_CLIENT_ID = os.getenv("SLACK_CLIENT_ID")
 SLACK_REDIRECT_URI = os.getenv("SLACK_REDIRECT_URI")
 SLACK_CLIENT_SECRET = os.getenv("SLACK_CLIENT_SECRET")
+
+
+# CALDOTCOM
+CAL_DOT_COM_CLIENT_ID = os.getenv("CAL_DOT_COM_CLIENT_ID")
+CAL_DOT_COM_CLIENT_SECRET = os.getenv("CAL_DOT_COM_CLIENT_SECRET")

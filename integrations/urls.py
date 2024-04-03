@@ -7,4 +7,5 @@ urlpatterns = [
     ),
     path("google/", include("integrations.google_oauth.urls")),
     path("outlook/", include("integrations.outlook.urls")),
+    path("cal/", include("integrations.caldotcom.urls")),
 ]
