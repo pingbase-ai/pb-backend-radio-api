@@ -76,7 +76,7 @@ class CalTokenRefreshView(CustomAPIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        access_token = auth_header.split(" ")[1]
+        access_token = auth_header.split(" ")[1].replace("Bearer ", "")
 
         try:
             cal_dot_com = CalDotCom.objects.get(cal_atoms_access_token=access_token)
