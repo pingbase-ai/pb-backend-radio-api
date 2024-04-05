@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import permissions, status
 from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
+
 from .serializers import (
     MeetingSerializer,
     CallSerializer,
@@ -33,6 +34,7 @@ from infra_utils.utils import encode_base64, UUIDEncoder
 from dyte.models import DyteMeeting, DyteAuthToken
 from events.models import Event
 from user.serializers import CustomEndUserSerializer
+from .utils import convert_to_date
 
 import logging
 import datetime
@@ -1080,37 +1082,40 @@ class CalendlyWebhookAPIView(CustomAPIView):
     def post(self, request, *args, **kwargs):
         try:
             data = request.data
+            event = data.get("event", None)
+            payload = data.get("payload", None)
+            scheduled_event = payload.get("scheduled_event", None)
 
-            logger.info(f"\n\n\n Calendly Webhook data: {data} \n\n\n")
-            # Assuming data contains 'meeting_id', 'start_time', etc.
-            # meeting_id = data.get("meeting_id")
-            # title = data.get("title")
-            # date = data.get("date")
-            # start_time = data.get("start_time")
-            # end_time = data.get("end_time")
-            # location = data.get("location")
-            # description = data.get("description")
-            # organizer_email = data.get("organizer_email")
+            if event == "invitee.created":
+                created_at = data.get("created_at", None)
+                endUserEmail = payload.get("email")
+                user = User.objects.filter(email=endUserEmail).first()
+                endUser = user.end_user
+                if not user:
+                    return Response({"status": status.HTTP_200_OK})
+                title = scheduled_event.get("name")
+                start_time = scheduled_event.get("start_time")
+                description = scheduled_event.get("meeting_notes_plain")
+                organizer = user
+                organization = endUser.organization
 
-            # organizer, _ = User.objects.get_or_create(email=organizer_email)
-            # meeting, created = Meeting.objects.update_or_create(
-            #     meeting_id=meeting_id,
-            #     defaults={
-            #         "title": title,
-            #         "date": date,
-            #         "start_time": start_time,
-            #         "end_time": end_time,
-            #         "location": location,
-            #         "description": description,
-            #         "organizer": organizer,
-            #     },
-            # )
-            # if created:
-            #     # Handle new meeting creation logic
-            #     pass
-            # else:
-            #     # Handle meeting update logic
-            #     pass
+                # TODO, need to get the location properly
+
+                required_date = convert_to_date(start_time, type="date")
+                required_start_time = convert_to_date(start_time)
+                logger.info(f"\n\n\n required_date: {required_date} \n\n\n")
+
+                # create a new meeting object from create_meeting class method
+                meeting = Meeting.create_meeting(
+                    title=title,
+                    start_time=required_start_time,
+                    description=description,
+                    organizer=organizer,
+                    end_time=None,
+                    location=None,
+                    organization=organization,
+                    date=required_date,
+                )
 
             return Response({"status": status.HTTP_200_OK})
         except Exception as e:
