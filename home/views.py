@@ -4,6 +4,7 @@ from infra_utils.views import CustomAPIView, CustomGenericAPIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from rest_framework.permissions import IsAuthenticated
+from django.views.decorators.csrf import csrf_exempt
 from .serializers import (
     MeetingSerializer,
     CallSerializer,
@@ -1072,3 +1073,45 @@ class EndUserListAPIView(CustomAPIView):
 
         serialized_data = CustomEndUserSerializer(end_users, many=True)
         return Response(serialized_data.data, status=status.HTTP_200_OK)
+
+
+class CalendlyWebhookAPIView(CustomAPIView):
+    @csrf_exempt
+    def post(self, request, *args, **kwargs):
+        try:
+            data = request.data
+
+            logger.info(f"\n\n\n Calendly Webhook data: {data} \n\n\n")
+            # Assuming data contains 'meeting_id', 'start_time', etc.
+            # meeting_id = data.get("meeting_id")
+            # title = data.get("title")
+            # date = data.get("date")
+            # start_time = data.get("start_time")
+            # end_time = data.get("end_time")
+            # location = data.get("location")
+            # description = data.get("description")
+            # organizer_email = data.get("organizer_email")
+
+            # organizer, _ = User.objects.get_or_create(email=organizer_email)
+            # meeting, created = Meeting.objects.update_or_create(
+            #     meeting_id=meeting_id,
+            #     defaults={
+            #         "title": title,
+            #         "date": date,
+            #         "start_time": start_time,
+            #         "end_time": end_time,
+            #         "location": location,
+            #         "description": description,
+            #         "organizer": organizer,
+            #     },
+            # )
+            # if created:
+            #     # Handle new meeting creation logic
+            #     pass
+            # else:
+            #     # Handle meeting update logic
+            #     pass
+
+            return Response({"status": status.HTTP_200_OK})
+        except Exception as e:
+            return Response({"status": "error", "error": str(e)})
