@@ -9,7 +9,7 @@ logger = logging.getLogger("django")
 
 
 def send_voice_note(user_id, type):
-    endUser = EndUser.objects.get(user_id=user_id)
+    endUser = EndUser.objects.get(id=user_id)
     organization = endUser.organization
 
     if type == "welcome_note":
