@@ -1,8 +1,13 @@
 from django.core.mail import send_mail
 from django.conf import settings
 from django_q.tasks import async_task
+from django.utils import timezone
+from datetime import timedelta
+
+import pytz
 import requests
 import logging
+
 
 logger = logging.getLogger("django")
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
@@ -82,3 +87,39 @@ def get_linkedIn_url(email: str):
     except requests.exceptions.RequestException as e:
         print(f"Error while fetching LinkedIn URL: {e}")
         return None
+
+
+def is_request_within_office_hours(organization):
+    # Get the current time in UTC
+    now_utc = timezone.now()
+
+    # Find the office hours entry for the organization today
+    today = (now_utc.weekday() + 1) % 7 or 7
+    try:
+        office_hours = organization.office_hours.get(weekday=today)
+    except OfficeHours.DoesNotExist:
+        # Assuming if there's no entry, the office is closed
+        return False
+
+    if not office_hours.is_open:
+        return False
+
+    # Adjust the current time for the organization's timezone
+    timezone_offset = timedelta(minutes=office_hours.timezone_offset)
+    now_local = now_utc + timezone_offset
+
+    # Check if the current time is within office hours
+    open_time = (
+        timezone.datetime.combine(
+            now_utc.date(), office_hours.open_time, tzinfo=pytz.UTC
+        )
+        + timezone_offset
+    )
+    close_time = (
+        timezone.datetime.combine(
+            now_utc.date(), office_hours.close_time, tzinfo=pytz.UTC
+        )
+        + timezone_offset
+    )
+
+    return open_time <= now_local < close_time

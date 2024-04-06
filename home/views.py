@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import permissions, status
 from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
+from django_q.tasks import async_task
 
 from .serializers import (
     MeetingSerializer,
@@ -15,6 +16,7 @@ from .serializers import (
 from .models import Meeting, Call, VoiceNote, EndUserLogin
 from user.models import Client, User, EndUser
 from .utils import upload_to_azure_blob
+from user.utils import is_request_within_office_hours
 from django.db.models import Q
 from rest_framework.parsers import FileUploadParser
 from .event_types import (
@@ -981,9 +983,10 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
             )
 
     def put(self, request, *args, **kwargs):
+        endUserId = request.query_params.get("endUserId")
         call_id = request.data.get("call_id", None)
         update_type = request.data.get("update_type", None)
-
+        organization = call.organization
         if not call_id or not update_type:
             return Response(
                 {"message": "call_id or update_type not provided"},
@@ -1000,6 +1003,36 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                 call.status = "missed"
                 call.event_type = MISSED_THEIR_CALL
                 call.save()
+
+                try:
+                    # send back a automated message to the endUser
+                    # if the call has happend within office hours -> call_you_back_note
+                    # if the call has happend outside office hours -> out_of_office_note
+                    is_request_within_office_hours = is_request_within_office_hours(
+                        organization
+                    )
+                    if is_request_within_office_hours:
+                        task_id = async_task(
+                            "user.tasks.send_voice_note",
+                            endUserId,
+                            "call_you_back_note",
+                        )
+                        logger.info(
+                            f"Auto send voice note scheduled with task_id: {task_id}"
+                        )
+                    else:
+                        task_id = async_task(
+                            "user.tasks.send_voice_note",
+                            endUserId,
+                            "out_of_office_note",
+                        )
+                        logger.info(
+                            f"Auto send voice note scheduled with task_id: {task_id}"
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"Error while sending automated message to enduser: {e}"
+                    )
 
                 # send a notification to pusher
                 pusher_data_obj = {
@@ -1026,7 +1059,6 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     agent_name = call.receiver.first_name if call.receiver else None
 
                 try:
-                    organization = call.organization
                     event = Event.create_event_async(
                         event_type=MISSED_THEIR_CALL,
                         source_user_id=call.caller.id,

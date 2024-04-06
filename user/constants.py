@@ -7,3 +7,6 @@ npm install --save @pingbase/launcher
 <br>
 yarn add @pingbase/widget
 """
+
+
+PINGBASE_BOT = "Pingbase Bot"
