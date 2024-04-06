@@ -1,7 +1,9 @@
 from pusher import Pusher
 from .models import User, EndUser, Organization
-from pusher_channel_app.utils import publish_event_to_user, PusherClientSingleton
+from pusher_channel_app.utils import publish_event_to_user
 from .constants import PINGBASE_BOT
+from infra_utils.utils import encode_base64
+
 import logging
 
 
@@ -9,7 +11,7 @@ logger = logging.getLogger("django")
 
 
 def send_voice_note(user_id, type):
-    endUser = EndUser.objects.get(user_id=user_id)
+    endUser = EndUser.objects.get(id=user_id)
     organization = endUser.organization
 
     if type == "welcome_note":
@@ -25,7 +27,7 @@ def send_voice_note(user_id, type):
                 "id": str(welcomeNote.id),
                 "storage_url": storage_url,
                 "sender": PINGBASE_BOT,
-                "play_time": play_time,
+                "play_time": str(play_time),
                 "title": title,
                 "description": description,
                 "event_type": "welcome_note",
@@ -55,7 +57,7 @@ def send_voice_note(user_id, type):
             "id": str(callYouBackNote.id),
             "storage_url": storage_url,
             "sender": PINGBASE_BOT,
-            "play_time": play_time,
+            "play_time": str(play_time),
             "title": title,
             "description": description,
             "event_type": "call_you_back_note",
@@ -82,7 +84,7 @@ def send_voice_note(user_id, type):
             "id": str(outOfOfficeNote.id),
             "storage_url": storage_url,
             "sender": PINGBASE_BOT,
-            "play_time": play_time,
+            "play_time": str(play_time),
             "title": title,
             "description": description,
             "event_type": "out_of_office_note",
