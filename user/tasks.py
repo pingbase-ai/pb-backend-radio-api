@@ -1,7 +1,9 @@
 from pusher import Pusher
 from .models import User, EndUser, Organization
-from pusher_channel_app.utils import publish_event_to_user, PusherClientSingleton
+from pusher_channel_app.utils import publish_event_to_user
 from .constants import PINGBASE_BOT
+from infra_utils.utils import encode_base64
+
 import logging
 
 
