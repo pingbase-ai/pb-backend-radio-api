@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Event
-from .serializers import EventSerializer, CustomEventSerializer
+from .serializers import EventSerializer, CustomEventSerializer, CustomEventSerializerV1
 from infra_utils.views import CustomGenericAPIView, CustomGenericAPIListView
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
@@ -32,6 +32,25 @@ class EventListAPIView(CustomGenericAPIListView):
         )
         serializer = CustomEventSerializer(events, many=True)
         return Response(serializer.data)
+
+
+class EventListTypeAPIView(CustomGenericAPIListView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, type, *args, **kwargs):
+        user = request.user
+        client = user.client
+
+        organization = client.organization
+
+        if type == "all":
+            events = Event.objects.filter(
+                organization=organization,
+            )
+            serializer = CustomEventSerializerV1(events, many=True)
+            return Response(serializer.data)
+        else:
+            Response({"error": "Invalid type"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class EventListPublicAPIView(CustomGenericAPIListView):

@@ -3,6 +3,9 @@ from django.dispatch import receiver
 from dyte.models import DyteMeeting, DyteAuthToken
 from django.conf import settings
 from user.models import EndUser
+from django_q.tasks import schedule
+from datetime import timedelta
+from django.utils import timezone
 
 
 import logging
@@ -27,3 +30,18 @@ def create_dyte_meeting(sender, instance, created, **kwargs):
             )
         except Exception as e:
             logger.error(f"Error while creating Dyte meeting and auth token: {e}")
+
+
+@receiver(post_save, sender=EndUser)
+def send_welcome_note(sender, instance, created, **kwargs):
+    if (created or not instance.welcome_note_sent) and (
+        instance.organization.auto_send_welcome_note
+    ):
+        delay_time = int(instance.organization.auto_sent_after)
+        schedule(
+            "user.tasks.send_voice_note",
+            instance.id,
+            "welcome_note",
+            schedule_type="O",
+            next_run=timezone.now() + timedelta(seconds=delay_time),
+        )

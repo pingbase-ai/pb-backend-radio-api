@@ -174,8 +174,9 @@ class LoginSerializer(serializers.ModelSerializer):
             raise AuthenticationFailed(
                 "Your Acccount is disabled, please contact admin"
             )
-        if not user.is_verified:
-            raise AuthenticationFailed("Your Email is not verified")
+        # User should still be able to login without verifying email
+        # if not user.is_verified:
+        #     raise AuthenticationFailed("Your Email is not verified")
 
         tokens = user.get_tokens()
 

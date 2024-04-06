@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "integrations.slack",
     "integrations.google_oauth",
     "integrations.outlook",
+    "integrations.caldotcom",
 ]
 
 MIDDLEWARE = [
@@ -191,10 +192,10 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 100,
     "NON_FIELD_ERRORS_KEY": "error",
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "user.authentication.SelectiveJWTAuthentication",
     ),
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=2),
 }
 
 PASSWORD_RESET_TIMEOUT = 604800  # 7 days
@@ -280,3 +281,8 @@ UPLEAD_BASE_URL = os.getenv("UPLEAD_BASE_URL")
 SLACK_CLIENT_ID = os.getenv("SLACK_CLIENT_ID")
 SLACK_REDIRECT_URI = os.getenv("SLACK_REDIRECT_URI")
 SLACK_CLIENT_SECRET = os.getenv("SLACK_CLIENT_SECRET")
+
+
+# CALDOTCOM
+CAL_DOT_COM_CLIENT_ID = os.getenv("CAL_DOT_COM_CLIENT_ID")
+CAL_DOT_COM_CLIENT_SECRET = os.getenv("CAL_DOT_COM_CLIENT_SECRET")

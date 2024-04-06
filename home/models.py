@@ -20,8 +20,8 @@ class Meeting(CreatedModifiedModel):
     date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField(null=True, blank=True)
-    location = models.CharField(max_length=100)
-    description = models.TextField()
+    location = models.CharField(max_length=100, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
     attendees = models.ManyToManyField(User, related_name="attendees")
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default="Scheduled"
@@ -50,7 +50,15 @@ class Meeting(CreatedModifiedModel):
 
     @classmethod
     def create_meeting(
-        cls, title, date, start_time, end_time, location, description, organizer
+        cls,
+        title,
+        date,
+        start_time,
+        end_time,
+        location,
+        description,
+        organizer,
+        organization,
     ):
         meeting = cls(
             title=title,
@@ -59,10 +67,12 @@ class Meeting(CreatedModifiedModel):
             end_time=end_time,
             location=location,
             description=description,
+            organization=organization,
+            organizer=organizer,
         )
-        meeting.save()
-        # Assuming 'organizer' is a User instance who is organizing the meeting
         meeting.attendees.add(organizer)
+        meeting.save()
+
         return meeting
 
     def add_attendee(self, user):

@@ -68,4 +68,10 @@ urlpatterns = [
         views.ActivitiesCreateModifyEndUserAPIView.as_view(),
         name="create_modify_end_user_activities",
     ),
+    # webhook
+    path(
+        "webhook",
+        views.CalendlyWebhookAPIView.as_view(),
+        name="webhook",
+    ),
 ]

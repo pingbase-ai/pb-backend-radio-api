@@ -16,6 +16,7 @@ from infra_utils.views import CustomGenericAPIView, CustomAPIView
 from infra_utils.utils import decode_base64
 from django.conf import settings
 from home.models import EndUserLogin
+from .constants import ENDUSER, CLIENT
 
 import logging
 import json
@@ -321,9 +322,18 @@ class PusherUserAuth(APIView):
 
         username = user.first_name or "Anonymous"
 
+        user_type = None
+        if hasattr(user, "end_user"):
+            user_type = ENDUSER
+        else:
+            user_type = CLIENT
+
         pusher_client = PusherClientSingleton().get_client()
 
-        user = {"user_id": user_id, "user_info": {"name": username}}
+        user = {
+            "user_id": user_id,
+            "user_info": {"name": username, "user_type": user_type},
+        }
 
         logger.info(f"pusher_client: {dir(pusher_client)}")
 

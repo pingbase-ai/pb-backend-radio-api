@@ -4,6 +4,9 @@ from infra_utils.views import CustomAPIView, CustomGenericAPIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from rest_framework.permissions import IsAuthenticated
+from django.views.decorators.csrf import csrf_exempt
+from django_q.tasks import async_task
+
 from .serializers import (
     MeetingSerializer,
     CallSerializer,
@@ -13,6 +16,7 @@ from .serializers import (
 from .models import Meeting, Call, VoiceNote, EndUserLogin
 from user.models import Client, User, EndUser
 from .utils import upload_to_azure_blob
+from user.utils import is_request_within_office_hours
 from django.db.models import Q
 from rest_framework.parsers import FileUploadParser
 from .event_types import (
@@ -32,6 +36,7 @@ from infra_utils.utils import encode_base64, UUIDEncoder
 from dyte.models import DyteMeeting, DyteAuthToken
 from events.models import Event
 from user.serializers import CustomEndUserSerializer
+from .utils import convert_to_date
 
 import logging
 import datetime
@@ -387,9 +392,11 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
         user = request.user
 
         endUserId = request.query_params.get("endUserId")
+        #
+        # endUserObj = EndUser.objects.filter(id=endUserId).first()
 
         sender = user
-        receiver = User.objects.filter(id=endUserId).first()
+        receiver = User.objects.filter(end_user__id=endUserId).first()
         file = request.FILES["file"]
         if not file:
             return Response(
@@ -424,7 +431,7 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
             }
             try:
                 publish_event_to_user(
-                    user.client.organization,
+                    user.client.organization.token,
                     "private",
                     encode_base64(f"{endUserId}"),
                     "client-event",
@@ -432,16 +439,16 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
                 )
             except Exception as e:
                 logger.error(f"Error while publishing voice note created event: {e}")
-            return Response(
-                {"message": "Voice note created"},
-                status=status.HTTP_201_CREATED,
-            )
         except Exception as e:
             logger.error(f"Error while creating voice note: {e}")
             return Response(
                 {"message": "Error while creating voice note"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        return Response(
+            {"message": "Voice note created"},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class ActivitiesViewModifyVoiceNoteClientAPIView(CustomGenericAPIView):
@@ -536,7 +543,7 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
             }
             try:
                 publish_event_to_client(
-                    sender.end_user.organization,
+                    sender.end_user.organization.token,
                     "private",
                     "enduser-event",
                     pusher_data_obj,
@@ -685,7 +692,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
             }
             try:
                 publish_event_to_user(
-                    str(organization.name),
+                    str(organization.token),
                     "private",
                     encode_base64(f"{endUserId}"),
                     "client-event",
@@ -767,6 +774,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                     agent_name = call.receiver.first_name if call.receiver else None
 
                 try:
+                    organization = call.organization
                     event = Event.create_event_async(
                         event_type=ANSWERED_OUR_CALL,
                         source_user_id=call.caller.id,
@@ -780,6 +788,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         interaction_id=call.call_id,
                         is_parent=call.is_parent,
                         storage_url=call.file_url,
+                        organization=organization,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
@@ -796,6 +805,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                     agent_name = call.receiver.first_name if call.receiver else None
 
                 try:
+                    organization = call.organization
                     event = Event.create_event_async(
                         event_type=CALLED_US,
                         source_user_id=call.caller.id,
@@ -809,6 +819,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         interaction_id=call.call_id,
                         is_parent=call.is_parent,
                         storage_url=call.file_url,
+                        organization=organization,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
@@ -836,7 +847,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                 }
                 try:
                     publish_event_to_user(
-                        str(user.client.organization.name),
+                        str(user.client.organization.token),
                         "private",
                         encode_base64(f"{call.receiver.id}"),
                         "client-event",
@@ -845,6 +856,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                 except Exception as e:
                     logger.error(f"Error while publishing call scheduled event: {e}")
                 try:
+                    organization = call.organization
                     event = Event.create_event_async(
                         event_type=MISSED_OUR_CALL,
                         source_user_id=call.caller.id,
@@ -858,6 +870,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         interaction_id=call.call_id,
                         is_parent=call.is_parent,
                         storage_url=call.file_url,
+                        organization=organization,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
@@ -923,7 +936,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
             }
             try:
                 publish_event_to_client(
-                    str(organization.name),
+                    str(organization.token),
                     "private",
                     "enduser-event",
                     pusher_data_obj,
@@ -970,9 +983,10 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
             )
 
     def put(self, request, *args, **kwargs):
+        endUserId = request.query_params.get("endUserId")
         call_id = request.data.get("call_id", None)
         update_type = request.data.get("update_type", None)
-
+        organization = call.organization
         if not call_id or not update_type:
             return Response(
                 {"message": "call_id or update_type not provided"},
@@ -990,6 +1004,36 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                 call.event_type = MISSED_THEIR_CALL
                 call.save()
 
+                try:
+                    # send back a automated message to the endUser
+                    # if the call has happend within office hours -> call_you_back_note
+                    # if the call has happend outside office hours -> out_of_office_note
+                    is_request_within_office_hours = is_request_within_office_hours(
+                        organization
+                    )
+                    if is_request_within_office_hours:
+                        task_id = async_task(
+                            "user.tasks.send_voice_note",
+                            endUserId,
+                            "call_you_back_note",
+                        )
+                        logger.info(
+                            f"Auto send voice note scheduled with task_id: {task_id}"
+                        )
+                    else:
+                        task_id = async_task(
+                            "user.tasks.send_voice_note",
+                            endUserId,
+                            "out_of_office_note",
+                        )
+                        logger.info(
+                            f"Auto send voice note scheduled with task_id: {task_id}"
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"Error while sending automated message to enduser: {e}"
+                    )
+
                 # send a notification to pusher
                 pusher_data_obj = {
                     "source_event_type": "missed-call",
@@ -999,7 +1043,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                 }
             try:
                 publish_event_to_client(
-                    str(call.organization.name),
+                    str(call.organization.token),
                     "private",
                     "enduser-event",
                     pusher_data_obj,
@@ -1028,6 +1072,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                         interaction_id=call.call_id,
                         is_parent=call.is_parent,
                         storage_url=call.file_url,
+                        organization=organization,
                     )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
@@ -1062,3 +1107,48 @@ class EndUserListAPIView(CustomAPIView):
 
         serialized_data = CustomEndUserSerializer(end_users, many=True)
         return Response(serialized_data.data, status=status.HTTP_200_OK)
+
+
+class CalendlyWebhookAPIView(CustomAPIView):
+    @csrf_exempt
+    def post(self, request, *args, **kwargs):
+        try:
+            data = request.data
+            event = data.get("event", None)
+            payload = data.get("payload", None)
+            scheduled_event = payload.get("scheduled_event", None)
+
+            if event == "invitee.created":
+                created_at = data.get("created_at", None)
+                endUserEmail = payload.get("email")
+                user = User.objects.filter(email=endUserEmail).first()
+                endUser = user.end_user
+                if not user:
+                    return Response({"status": status.HTTP_200_OK})
+                title = scheduled_event.get("name")
+                start_time = scheduled_event.get("start_time")
+                description = scheduled_event.get("meeting_notes_plain")
+                organizer = user
+                organization = endUser.organization
+
+                # TODO, need to get the location properly
+
+                required_date = convert_to_date(start_time, type="date")
+                required_start_time = convert_to_date(start_time)
+                logger.info(f"\n\n\n required_date: {required_date} \n\n\n")
+
+                # create a new meeting object from create_meeting class method
+                meeting = Meeting.create_meeting(
+                    title=title,
+                    start_time=required_start_time,
+                    description=description,
+                    organizer=organizer,
+                    end_time=None,
+                    location=None,
+                    organization=organization,
+                    date=required_date,
+                )
+
+            return Response({"status": status.HTTP_200_OK})
+        except Exception as e:
+            return Response({"status": "error", "error": str(e)})

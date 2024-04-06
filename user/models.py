@@ -37,6 +37,7 @@ class UserManager(BaseUserManager):
 
         user = self.model(email=self.normalize_email(email), **extra_fields)
         user.set_password(password)
+        user.is_active = True
 
         user.save()
         return user
@@ -144,7 +145,9 @@ class Organization(CreatedModifiedModel):
     website = models.CharField(max_length=256, blank=True, default="")
     token = models.UUIDField(max_length=64, default=uuid.uuid4, editable=False)
     auto_send_welcome_note = models.BooleanField(default=True)
-    auto_sent_after = models.CharField(max_length=5, blank=True, default="", null=True)
+    auto_sent_after = models.CharField(
+        max_length=5, blank=True, default="30", null=True
+    )
 
     welcome_note = models.ForeignKey(
         "WelcomeNote", on_delete=models.DO_NOTHING, null=True, blank=True
@@ -246,6 +249,7 @@ class EndUser(CreatedModifiedModel):
     linkedin = models.TextField(null=True, blank=True)
     city = models.CharField(max_length=200, null=True, blank=True)
     country = models.CharField(max_length=200, null=True, blank=True)
+    welcome_note_sent = models.BooleanField(default=False)
 
     objects = EndUserManager()
 

@@ -187,12 +187,16 @@ class SignUpView(CustomGenericAPIView):
                 user = User.objects.filter(email=email).first()
 
                 if user:
-                    client = Client.objects.filter(user=user).first()
-                    if client:
-                        return Response(
-                            {"message": "Client already exists."},
-                            status=status.HTTP_400_BAD_REQUEST,
-                        )
+                    return Response(
+                        {"message": "User already exists."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                    # client = Client.objects.filter(user=user).first()
+                    # if client:
+                    #     return Response(
+                    #         {"message": "Client already exists."},
+                    #         status=status.HTTP_400_BAD_REQUEST,
+                    #     )
 
                 # first create an organization with company name
                 # check if the organization exists already
@@ -229,12 +233,20 @@ class SignUpView(CustomGenericAPIView):
                     + "?token="
                     + str(token)
                 )
-                message = ". Ready to serve? Use the link below to verify your email and secure your spot in the Pingbase arena. \nIf you received this by a wild shot and weren’t expecting any account verification email, feel free to ignore this volley. \n"
-                email_body = "Hi " + user.email + message + verification_link
+
+                message = "Hit the link below to verify your email and activate your PingBase account."
+                html_email_body = (
+                    f"Hi,<br><br>"
+                    f"{message}<br><br>"
+                    f"<a href='{verification_link}'>Activate your PingBase account</a>"
+                    f"<br><br>Thanks,<br>Team PingBase<br>"
+                )
+                # email_body = "Hi " + user.email + message + verification_link
                 data = {
-                    "email_body": email_body,
+                    "html_email_body": html_email_body,
                     "to_email": user.email,
-                    "email_subject": "Demo Email Verification",
+                    "email_subject": "Verify your email",
+                    "email_body": None,
                 }
                 try:
                     Mail.send_email(data)
@@ -346,6 +358,10 @@ class InviteTeamateView(CustomGenericAPIView):
         company = data.get("company")
         invitee_email = data.get("invitee_email")
 
+        referer: str = request.META.get(
+            "HTTP_REFERER", "https://app.pingbase.ai/onboarding"
+        )
+
         ClientInvitee = Client.objects.filter(user__email=invitee_email).first()
 
         if not ClientInvitee:
@@ -380,28 +396,55 @@ class InviteTeamateView(CustomGenericAPIView):
         serializer.save()
         user_data = serializer.data
 
-        ####  Sending email
+        # Sending Email
         user = User.objects.get(email=user_data["email"])
 
         token = RefreshToken.for_user(user).access_token
 
         current_site_domain = get_current_site(request).domain
         relativeLink = reverse("verify-email")
-
         verification_link = (
             "https://" + current_site_domain + relativeLink + "?token=" + str(token)
         )
-        message = ". Hello, team player! You've been served an invite to join Pingbase—Yay! \nUse the link below to verify your email and get ready to rally. \nIf this serve surprises you and you weren’t expecting any account verification email, just let it bounce and ignore this message. \n"
-        email_body = "Hi " + user.email + message + verification_link
-        data = {
-            "email_body": email_body,
-            "to_email": user.email,
-            "email_subject": "Demo Email Verification",
-        }
-        try:
-            Mail.send_email(data)
-        except Exception as e:
-            logger.error(f"Error: {e}")
+        # Add logic to send a dedicated email for onboarding
+        total_org_clients = Client.objects.filter(organization=organization).count()
+        logger.info(
+            f"total_org_clients -{total_org_clients}",
+        )
+        logger.info(f"referer -{referer}")
+        if total_org_clients == 1 or "onboarding" in referer.lower():
+            # this means, it's the invite to get onboarded
+            message = f"Your colleague, whose email is {request.user.email}, has signed up for PingBase and would like you to complete the onboarding. Click on the link below to get started:"
+            html_email_body = (
+                f"Hi there,<br><br>"
+                f"{message}<br><br>"
+                f"<a href='{verification_link}'>Complete PingBase onboarding</a>"
+                f"<br><br>Thanks,<br>Team PingBase<br>"
+            )
+            # email_body = "Hi " + user.email + message + verification_link
+            data = {
+                "html_email_body": html_email_body,
+                "to_email": user.email,
+                "email_subject": "You've been invited to setup PingBase",
+                "email_body": None,
+            }
+            try:
+                Mail.send_email(data)
+            except Exception as e:
+                logger.error(f"Error: {e}")
+        else:
+            message = ". Hello, team player! You've been served an invite to join Pingbase—Yay! \nUse the link below to verify your email and get ready to rally. \nIf this serve surprises you and you weren’t expecting any account verification email, just let it bounce and ignore this message. \n"
+            email_body = "Hi " + user.email + message + verification_link
+            data = {
+                "email_body": email_body,
+                "to_email": user.email,
+                "email_subject": "has invited you to PingBase,",
+                "html_email_body": None,
+            }
+            try:
+                Mail.send_email(data)
+            except Exception as e:
+                logger.error(f"Error: {e}")
 
         client = Client.objects.filter(user=user).first()
 
@@ -723,13 +766,23 @@ class OnboardingView(CustomAPIView):
         elif type == "share_code_instructions":
             email = data.get("email")
 
-            intergration_data = {
-                "email_subject": "Integrate PingBase Launcher & Widget",
-                "code_snippet": integration_code_snippet,
+            message = f"Your colleague, {user.first_name + ' ' + user.last_name}, has signed up for PingBase. The final step in order to go live is to drop these snippets of code into your product."
+            html_email_body = (
+                f"Hi there,<br><br>"
+                f"{message}<br><br>"
+                f"{integration_code_snippet} <br><br>"
+                f"For more help, check out our <a href='https://docs.pingbase.ai/'>developer docs<a>."
+                f"<br><br>Thanks,<br>Team PingBase<br>"
+            )
+            # email_body = "Hi " + user.email + message + verification_link
+            data = {
+                "html_email_body": html_email_body,
                 "to_email": email,
+                "email_subject": "You've been invited to setup PingBase",
+                "email_body": None,
             }
             try:
-                Mail.send_code_email(intergration_data)
+                Mail.send_code_email(data)
 
             except Exception as e:
                 logger.error(f"Error while sending code snippet: {e}")
@@ -935,7 +988,7 @@ class RegistrationView(generics.GenericAPIView):
             data = {
                 "email_body": email_body,
                 "to_email": user.email,
-                "email_subject": "Demo Email Verification",
+                "email_subject": "Verify your email",
             }
             Mail.send_email(data)
 
@@ -971,9 +1024,12 @@ class EmailVerificationView(CustomAPIView):
             user = User.objects.get(id=payload["user_id"])
 
             client = Client.objects.filter(user=user).first()
+            organization = client.organization
 
             # check if the user is the first user of the company
-            all_clients_objects_count = Client.objects.all().count()
+            all_clients_objects_count = Client.objects.filter(
+                organization=organization
+            ).count()
 
             company_name = client.organization.name
 
@@ -1025,7 +1081,7 @@ class ResendVerificationEmailView(CustomAPIView):
                 data = {
                     "email_body": email_body,
                     "to_email": Email,
-                    "email_subject": "Demo Email Verification",
+                    "email_subject": "Verify your email",
                 }
                 Mail.send_email(data)
                 return Response(

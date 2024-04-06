@@ -24,6 +24,7 @@ def create_login_event(sender, instance, created, **kwargs):
     )
     if created:
         try:
+            organization = instance.organization
             event = Event.create_event_async(
                 event_type=LOGGED_IN,
                 source_user_id=instance.end_user.user.id,
@@ -37,6 +38,7 @@ def create_login_event(sender, instance, created, **kwargs):
                 interaction_id=instance.login_id,
                 is_parent=False,
                 storage_url=None,
+                organization=organization,
             )
 
         except Exception as e:
@@ -74,6 +76,7 @@ def create_voice_note_event(sender, instance, created, **kwargs):
     # a new voice record
     if created:
         try:
+            orgnization = instance.organization
             event = Event.create_event_async(
                 event_type=VOICE_NOTE,
                 source_user_id=instance.sender.id,
@@ -87,6 +90,7 @@ def create_voice_note_event(sender, instance, created, **kwargs):
                 interaction_id=instance.voice_note_id,
                 is_parent=instance.is_parent,
                 storage_url=instance.audio_file_url,
+                organization=organization,
             )
         except Exception as e:
             logger.error(f"Error while creating voice note event: {e}")
@@ -154,3 +158,53 @@ def create_voice_note_event(sender, instance, created, **kwargs):
 #             )
 #         except Exception as e:
 #             logger.error(f"Error while creating call event: {e}")
+
+
+@receiver(post_save, sender=Meeting)
+def create_meeting_event(sender, instance, created, **kwargs):
+    """
+    Signal to create an event for meeting.
+    """
+    if created:
+        try:
+            organization = instance.organization
+            event = Event.create_event_async(
+                event_type=instance.event_type,
+                source_user_id=instance.organizer.id,
+                destination_user_id=None,
+                status=SUCCESS,
+                duration=0,
+                frontend_screen="Meeting",
+                agent_name=None,
+                initiated_by=MANUAL,
+                interaction_type=instance.event_type,
+                interaction_id=instance.meeting_id,
+                is_parent=False,
+                storage_url=None,
+                organization=organization,
+            )
+        except Exception as e:
+            logger.error(f"Error while creating meeting event: {e}")
+        finally:
+            org = instance.organization
+            endUser = instance.organizer.end_user
+            user_details = endUser.get_user_details()
+            user_details_message = create_message_compact(user_details)
+            message = f"User {user_details['username']} scheduled a meeting :calendar: \n {user_details_message} on {instance.date}"
+
+            SlackOAuthObj = SlackOAuth.objects.filter(organization=org).first()
+            if SlackOAuthObj and SlackOAuthObj.is_active:
+                try:
+                    Slack.post_message_to_slack_async(
+                        access_token=SlackOAuthObj.access_token,
+                        channel_id=SlackOAuthObj.channel_id,
+                        message=message,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while sending slack notification: 1 {e}")
+            else:
+                logger.error("SlackOAuthObj not found or is inactive")
+    else:
+        # update the existing record of event
+        # TODO
+        pass
