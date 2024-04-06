@@ -66,24 +66,28 @@ class Mail:
 def get_linkedIn_url(email: str):
     if not email:
         return None
-    UPLEAD_BASE_URL = settings.UPLEAD_BASE_URL
-    UPLEAD_API_KEY = settings.UPLEAD_API_KEY
-    url = f"{UPLEAD_BASE_URL}/person-search"
-    data = {"email": email}
+    RC_BASE_URL = settings.REVERSE_CONTACT_BASE_URL
+    RC_API_KEY = settings.REVERSE_CONTACT_API_KEY
+    url = f"{RC_BASE_URL}/enrichment"
     try:
         logger.info("making the request")
-        res = requests.post(
+        querystring = {"apikey": f"{RC_API_KEY}", "email": f"{email}"}
+
+        res = requests.get(
             url,
-            params={"email": email},
             headers={
-                "Authorization": f"{UPLEAD_API_KEY}",
                 "Content-Type": "application/json",
             },
-            json=data,
+            params=querystring,
         )
-        logging.info(f"res--{res.status_code}--{res.json()}--{res.reason}--{res.text}")
-        # res.raise_for_status()
-        return res.json()
+        data = res.json()
+        if "success" in data:
+            try:
+                linkedin_url = data["person"]["linkedInUrl"]
+                return linkedin_url
+            except AttributeError:
+                logger.error(f"No LinkedIn URL found for {email}")
+                return None
     except requests.exceptions.RequestException as e:
         print(f"Error while fetching LinkedIn URL: {e}")
         return None

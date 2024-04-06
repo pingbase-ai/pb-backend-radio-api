@@ -6,6 +6,7 @@ from user.models import EndUser
 from django_q.tasks import schedule
 from datetime import timedelta
 from django.utils import timezone
+from .utils import get_linkedIn_url
 
 
 import logging
@@ -45,3 +46,17 @@ def send_welcome_note(sender, instance, created, **kwargs):
             schedule_type="O",
             next_run=timezone.now() + timedelta(seconds=delay_time),
         )
+
+
+@receiver(post_save, sender=EndUser)
+def fetch_linkedIn_url(sender, instance, created, **kwargs):
+    if created:
+        try:
+            if not instance.linkedin:
+                email = instance.user.email
+                linkedInUrl = get_linkedIn_url(email)
+                if linkedInUrl:
+                    instance.linkedin = linkedInUrl
+                    instance.save()
+        except Exception as e:
+            logger.error(f"Error while fetching LinkedIn URL: {e}")
