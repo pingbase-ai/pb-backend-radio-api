@@ -16,17 +16,17 @@ def upload_to_azure_blob(file, prefix, blob_name) -> str:
     )
 
     # Read the file in binary mode
-    file_bytes = file.read()
+    # file_bytes = file.read()
 
     # Define the content settings with the appropriate MIME type for .webm files
-    content_settings = ContentSettings(
-        content_type="video/webm", content_disposition="inline"
-    )
+    # content_settings = ContentSettings(
+    #     content_type="video/webm", content_disposition="inline"
+    # )
 
     # Create the blob from bytes
     blob_service_client.get_blob_client(
         container=container_name, blob=full_blob_name
-    ).upload_blob(file_bytes, overwrite=True, content_settings=content_settings)
+    ).upload_blob(file, overwrite=True, blob_type="BlockBlob")
 
     # Return the blob URL
     blob_url = f"https://{account_name}.blob.core.windows.net/{container_name}/{full_blob_name}"
