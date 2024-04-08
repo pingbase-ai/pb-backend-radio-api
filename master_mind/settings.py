@@ -211,6 +211,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:8080",
     "https://app.pingbase.ai",
+    "https://*",
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -223,6 +224,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:8080",
     "https://app.pingbase.ai",
+    "https://*",
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
@@ -231,7 +233,7 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 
 CORS_ALLOW_HEADERS = list(default_headers) + ["X-User-Token", "organization-token"]
 
-CORS_ALLOW_ALL_ORIGINS = False  # should not use this in production
+CORS_ALLOW_ALL_ORIGINS = True  # Should find a proper way to allow public endpoints
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
