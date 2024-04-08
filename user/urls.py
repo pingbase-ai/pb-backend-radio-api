@@ -60,6 +60,7 @@ urlpatterns = [
         name="end-user-list",
     ),
     path("register-enduser", views.CreateEndUserView.as_view(), name="create-enduser"),
+    path("enduser/init", views.InitEndUserView.as_view(), name="init-enduser"),
     # not completely done
     path("register/", views.RegistrationView.as_view(), name="register"),
     path("register-team/", views.TeamRegistrationView.as_view(), name="register-team"),
