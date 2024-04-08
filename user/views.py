@@ -903,6 +903,53 @@ class CreateEndUserView(generics.GenericAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class InitEndUserView(generics.GenericAPIView):
+    def get(self, request, *args, **kwargs):
+        org_token = request.headers.get("organization-token")
+        if not org_token:
+            return Response(
+                {"message": "Organization token is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        organization = Organization.objects.filter(token=org_token).first()
+        if not organization:
+            return Response(
+                {"message": "Organization token not valid"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            orgName = organization.name
+            orgWidget = organization.widgets
+
+            widgetIsActive = orgWidget.is_active
+            widgetPosition = orgWidget.position
+            widgetAvatar = orgWidget.avatar
+
+            widgetAvatarNumber = int("".join(filter(str.isdigit, widgetAvatar)))
+
+            teamName = organization.team_name
+
+            return Response(
+                {
+                    "organization": orgName,
+                    "widget": {
+                        "is_active": widgetIsActive,
+                        "position": widgetPosition,
+                        "avatar": widgetAvatarNumber,
+                    },
+                    "team_name": teamName,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return Response(
+                {"message": "Something went wrong"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
 class TeamRegistrationView(generics.GenericAPIView):
 
     def post(self, request):

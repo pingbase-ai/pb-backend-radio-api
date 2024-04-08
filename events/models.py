@@ -96,6 +96,12 @@ class Event(models.Model):
         Organization, on_delete=models.CASCADE, blank=True, null=True
     )
 
+    # Organization level field
+    is_unread = models.BooleanField(default=True)
+
+    # enduser specific field
+    is_played = models.BooleanField(default=False)
+
     # create a string representation for the event model
     def __str__(self):
         return self.event_type

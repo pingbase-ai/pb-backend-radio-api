@@ -9,6 +9,10 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from user.models import Organization
 
+import logging
+
+logger = logging.getLogger("django")
+
 # Create your views here.
 
 
@@ -51,6 +55,28 @@ class EventListTypeAPIView(CustomGenericAPIListView):
             return Response(serializer.data)
         else:
             Response({"error": "Invalid type"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EventUpdateAPIView(CustomGenericAPIView):
+    permission_classes = (IsAuthenticated,)
+
+    def put(self, request, *args, **kwargs):
+        user = request.user
+        organization = user.client.organization
+        try:
+            event = Event.objects.filter(organization=organization).update(
+                is_unread=False
+            )
+            return Response(
+                {"message": f"All Events marked as read <-> {event}"},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            logger.error(f"Error while updating event: {e}")
+            return Response(
+                {"error": "Something went wrong!"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class EventListPublicAPIView(CustomGenericAPIListView):
@@ -114,8 +140,38 @@ class EventPublicAPIView(CustomGenericAPIView):
         )
         unseen_events_count = unseen_events.count()
 
+        # new events
+        new_events = Event.objects.filter(
+            destination_user_id=endUserId,
+            is_seen_enduser=False,
+            event_type__in=[
+                "MISSED_OUR_CALL",
+                "WE_SENT_AUDIO_NOTE",
+            ],
+        )
+        new_events_count = new_events.count()
+        last_recored_obj = {}
+
+        last_record = (
+            Event.objects.filter(
+                destination_user_id=endUserId,
+                event_type__in=["MISSED_OUR_CALL", "WE_SENT_AUDIO_NOTE"],
+            )
+            .order_by("-timestamp")
+            .first()
+        )
+
+        if last_record:
+            if last_record.is_seen_enduser is False:
+                serializer = CustomEventSerializer(last_record)
+                last_recored_obj = serializer.data
+
         return Response(
-            {"unseen_events_count": unseen_events_count},
+            {
+                "unseen_events_count": unseen_events_count,
+                "new_events_count": new_events_count,
+                "last_record": last_recored_obj,
+            },
             status=status.HTTP_200_OK,
         )
 
@@ -123,6 +179,7 @@ class EventPublicAPIView(CustomGenericAPIView):
 
         organization_token = request.headers.get("organization-token")
         endUserId = request.query_params.get("endUserId")
+        eventId = request.query_params.get("eventId")
 
         if not organization_token:
             return Response(
@@ -136,17 +193,22 @@ class EventPublicAPIView(CustomGenericAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        event = Event.objects.filter(
-            destination_user_id=endUserId,
-            is_seen_enduser=False,
-            event_type__in=[
-                "CALLED_US",
-                "ANSWERED_OUR_CALL",
-                "MISSED_OUR_CALL",
-                "WE_SENT_AUDIO_NOTE",
-                "SENT_US_AUDIO_NOTE",
-            ],
-        ).update(is_seen_enduser=True)
+        if not eventId:
+            event = Event.objects.filter(
+                destination_user_id=endUserId,
+                is_seen_enduser=False,
+                event_type__in=[
+                    "CALLED_US",
+                    "ANSWERED_OUR_CALL",
+                    "MISSED_OUR_CALL",
+                    "WE_SENT_AUDIO_NOTE",
+                    "SENT_US_AUDIO_NOTE",
+                ],
+            ).update(is_seen_enduser=True)
+        else:
+            event = Event.objects.filter(id=eventId).first()
+            event.is_seen_enduser = True
+            event.is_played = True
         if not event:
             return Response(
                 {"error": "Event not found"},

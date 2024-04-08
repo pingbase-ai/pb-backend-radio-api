@@ -377,8 +377,8 @@ class OnboardingSession(CreatedModifiedModel):
 class Widget(models.Model):
 
     AVATAR_CHOICES = [
-        ("avatar1", "Avatar 1"),
-        ("avatar2", "Avatar 2"),
+        ("1", "Avatar 1"),
+        ("2", "Avatar 2"),
         # Add more predefined avatars here
     ]
 
@@ -392,3 +392,4 @@ class Widget(models.Model):
     )
     avatar = models.CharField(max_length=50, choices=AVATAR_CHOICES)
     position = models.CharField(max_length=50, choices=POSITION_CHOICES)
+    is_active = models.BooleanField(default=True)
