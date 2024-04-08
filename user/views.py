@@ -23,6 +23,7 @@ from django.utils.encoding import smart_bytes, smart_str, DjangoUnicodeDecodeErr
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from rest_framework.decorators import api_view
 from rest_framework.reverse import reverse
+from home.utils import upload_to_azure_blob
 from .models import (
     Organization,
     Client,
@@ -541,6 +542,48 @@ class ProfileView(CustomGenericAPIView):
             return Response(
                 {"message": "Invalid profile type"},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ProfilePicView(CustomGenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        user = request.user
+        file = request.FILES.get("file")
+        if not file:
+            return Response(
+                {"message": "File is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        extension = None
+
+        content_type = file.content_type
+
+        if content_type == "image/jpeg":
+            extension = "jpg"
+        elif content_type == "image/png":
+            extension = "png"
+        elif content_type == "image/gif":
+            extension = "gif"
+        else:
+            extension = "unknown"
+        try:
+            stored_url = upload_to_azure_blob(
+                file,
+                f"profile-pics/{user.client.organization.name}",
+                f"{user.id}.{extension}",
+            )
+            user.photo = stored_url
+            user.save()
+            return Response(
+                {"message": "Profile picture uploaded successfully"},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return Response(
+                {"message": "Something went wrong"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 
