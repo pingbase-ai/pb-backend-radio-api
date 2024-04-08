@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from infra_utils.views import CustomAPIView, CustomGenericAPIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.views.decorators.csrf import csrf_exempt
 from django_q.tasks import async_task
 
@@ -504,6 +504,7 @@ class ActivitiesViewModifyVoiceNoteClientAPIView(CustomGenericAPIView):
 
 class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
     parser_classes = (FileUploadParser,)
+    permission_classes = (AllowAny,)
 
     def post(self, request, filename, *args, **kwargs):
 
@@ -564,6 +565,8 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
 
 
 class ActivitiesViewVoiceNoteEndUserAPIView(CustomGenericAPIView):
+    permission_classes = (AllowAny,)
+
     def get(self, request, *args, **kwargs):
 
         endUserId = request.query_params.get("endUserId", None)
@@ -774,22 +777,27 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                     agent_name = call.receiver.first_name if call.receiver else None
 
                 try:
+                    # TODO add logic, if interaction id is already present, don't create a new event
                     organization = call.organization
-                    event = Event.create_event_async(
-                        event_type=ANSWERED_OUR_CALL,
-                        source_user_id=call.caller.id,
-                        destination_user_id=call.receiver.id,
-                        status=SUCCESS,
-                        duration=0,
-                        frontend_screen="NA",
-                        agent_name=agent_name,
-                        initiated_by=MANUAL,
-                        interaction_type=CALL,
-                        interaction_id=call.call_id,
-                        is_parent=call.is_parent,
-                        storage_url=call.file_url,
-                        organization=organization,
-                    )
+                    existingEvent = Event.objects.filter(
+                        interaction_id=call.call_id
+                    ).first()
+                    if not existingEvent:
+                        event = Event.create_event_async(
+                            event_type=ANSWERED_OUR_CALL,
+                            source_user_id=call.caller.id,
+                            destination_user_id=call.receiver.id,
+                            status=SUCCESS,
+                            duration=0,
+                            frontend_screen="NA",
+                            agent_name=agent_name,
+                            initiated_by=MANUAL,
+                            interaction_type=CALL,
+                            interaction_id=call.call_id,
+                            is_parent=call.is_parent,
+                            storage_url=call.file_url,
+                            organization=organization,
+                        )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
 
@@ -806,21 +814,25 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
 
                 try:
                     organization = call.organization
-                    event = Event.create_event_async(
-                        event_type=CALLED_US,
-                        source_user_id=call.caller.id,
-                        destination_user_id=call.receiver.id,
-                        status=SUCCESS,
-                        duration=0,
-                        frontend_screen="NA",
-                        agent_name=agent_name,
-                        initiated_by=MANUAL,
-                        interaction_type=CALL,
-                        interaction_id=call.call_id,
-                        is_parent=call.is_parent,
-                        storage_url=call.file_url,
-                        organization=organization,
-                    )
+                    existingEvent = Event.objects.filter(
+                        interaction_id=call.call_id
+                    ).first()
+                    if not existingEvent:
+                        event = Event.create_event_async(
+                            event_type=CALLED_US,
+                            source_user_id=call.caller.id,
+                            destination_user_id=call.receiver.id,
+                            status=SUCCESS,
+                            duration=0,
+                            frontend_screen="NA",
+                            agent_name=agent_name,
+                            initiated_by=MANUAL,
+                            interaction_type=CALL,
+                            interaction_id=call.call_id,
+                            is_parent=call.is_parent,
+                            storage_url=call.file_url,
+                            organization=organization,
+                        )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
             elif update_type == "mark_as_completed":
@@ -887,6 +899,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
 
 
 class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
+    permission_classes = (AllowAny,)
 
     def post(self, request, *args, **kwargs):
         endUserId = request.query_params.get("endUserId")

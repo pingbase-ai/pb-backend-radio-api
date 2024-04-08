@@ -857,7 +857,9 @@ class OnboardingDataView(CustomGenericAPIListView):
             )
 
 
-class CreateEndUserView(generics.GenericAPIView):
+class CreateEndUserView(CustomGenericAPIView):
+    permission_classes = (permissions.AllowAny,)
+
     def post(self, request, *args, **kwargs):
         org_token = request.headers.get("organization-token")
         if not org_token:
@@ -904,6 +906,8 @@ class CreateEndUserView(generics.GenericAPIView):
 
 
 class InitEndUserView(generics.GenericAPIView):
+    permission_classes = (permissions.AllowAny,)
+
     def get(self, request, *args, **kwargs):
         org_token = request.headers.get("organization-token")
         if not org_token:

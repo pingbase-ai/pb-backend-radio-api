@@ -26,3 +26,22 @@ class TimingMiddleware(MiddlewareMixin):
             logger.info(message)
 
         return response
+
+
+# TODO to complete this properly.
+class SelectiveCORSMiddleware(MiddlewareMixin):
+    def process_response(self, request, response):
+        # List of paths to allow CORS
+        public_paths = [
+            "/api/v1/users/register-enduser",
+            "/api/v1/users/enduser/init",
+            "/another/public/path/",
+        ]
+
+        # Check if the requested path is in the public paths list
+        if any(request.path.startswith(path) for path in public_paths):
+            response["Access-Control-Allow-Origin"] = "*"
+            response["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+            response["Access-Control-Allow-Headers"] = "Origin, Content-Type, Accept"
+
+        return response
