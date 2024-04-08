@@ -85,7 +85,7 @@ def create_voice_note_event(sender, instance, created, **kwargs):
     # a new voice record
     if created:
         try:
-            orgnization = instance.organization
+            organization = instance.organization
             event_type = WE_SENT_AUDIO_NOTE
             if not instance.is_parent:
                 event_type = SENT_US_AUDIO_NOTE
@@ -126,17 +126,17 @@ def create_voice_note_event(sender, instance, created, **kwargs):
                         logger.error(f"Error while sending slack notification: 1 {e}")
                 else:
                     logger.error("SlackOAuthObj not found or is inactive")
-    else:
-        # update the existing record of event
-        try:
-            event = Event.objects.filter(
-                interaction_type=VOICE_NOTE, interaction_id=instance.voice_note_id
-            ).first()
-            event.source_user_id = instance.sender.id
-            event.destination_user_id = instance.receiver.id
-            event.save()
-        except Exception as e:
-            logger.error(f"Error while updating voice note event: {e}")
+    # else:
+    #     # update the existing record of event
+    #     try:
+    #         event = Event.objects.filter(
+    #             interaction_type=VOICE_NOTE, interaction_id=instance.voice_note_id
+    #         ).first()
+    #         event.source_user_id = instance.sender.id
+    #         event.destination_user_id = instance.receiver.id
+    #         event.save()
+    #     except Exception as e:
+    #         logger.error(f"Error while updating voice note event: {e}")
 
 
 # DEPRICATION WARNING: This signal is deprecated and will be removed in the future.

@@ -396,7 +396,12 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
         # endUserObj = EndUser.objects.filter(id=endUserId).first()
 
         sender = user
-        receiver = User.objects.filter(end_user__id=endUserId).first()
+        receiver = User.objects.filter(id=endUserId).first()
+        if not receiver:
+            return Response(
+                {"message": "End user not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         file = request.FILES.get("file")
         if not file:
             return Response(
