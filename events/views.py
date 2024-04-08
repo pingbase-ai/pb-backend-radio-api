@@ -5,9 +5,10 @@ from rest_framework.response import Response
 from .models import Event
 from .serializers import EventSerializer, CustomEventSerializer, CustomEventSerializerV1
 from infra_utils.views import CustomGenericAPIView, CustomGenericAPIListView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.db.models import Q
 from user.models import Organization
+
 
 import logging
 
@@ -80,6 +81,7 @@ class EventUpdateAPIView(CustomGenericAPIView):
 
 
 class EventListPublicAPIView(CustomGenericAPIListView):
+    permission_classes = (AllowAny,)
 
     def get(self, request, *args, **kwargs):
 
@@ -105,6 +107,8 @@ class EventListPublicAPIView(CustomGenericAPIListView):
 
 
 class EventPublicAPIView(CustomGenericAPIView):
+
+    permission_classes = (AllowAny,)
 
     def get(self, request, *args, **kwargs):
         organization_token = request.headers.get("organization-token")
@@ -137,6 +141,7 @@ class EventPublicAPIView(CustomGenericAPIView):
                 "WE_SENT_AUDIO_NOTE",
                 "SENT_US_AUDIO_NOTE",
             ],
+            is_parent=False,
         )
         unseen_events_count = unseen_events.count()
 
@@ -148,6 +153,7 @@ class EventPublicAPIView(CustomGenericAPIView):
                 "MISSED_OUR_CALL",
                 "WE_SENT_AUDIO_NOTE",
             ],
+            is_parent=False,
         )
         new_events_count = new_events.count()
         last_recored_obj = {}
@@ -156,6 +162,7 @@ class EventPublicAPIView(CustomGenericAPIView):
             Event.objects.filter(
                 destination_user_id=endUserId,
                 event_type__in=["MISSED_OUR_CALL", "WE_SENT_AUDIO_NOTE"],
+                is_parent=False,
             )
             .order_by("-timestamp")
             .first()
