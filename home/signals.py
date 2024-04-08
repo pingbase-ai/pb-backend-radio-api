@@ -4,7 +4,16 @@ from home.models import Meeting, Call, VoiceNote, EndUserLogin
 from django.conf import settings
 from user.models import EndUser
 from events.models import Event
-from home.event_types import LOGGED_IN, SUCCESS, MANUAL, LOGIN, VOICE_NOTE, CALL
+from home.event_types import (
+    LOGGED_IN,
+    SUCCESS,
+    MANUAL,
+    LOGIN,
+    VOICE_NOTE,
+    CALL,
+    WE_SENT_AUDIO_NOTE,
+    SENT_US_AUDIO_NOTE,
+)
 from integrations.slack.utils import create_message_compact, Slack
 from integrations.slack.models import SlackOAuth
 
@@ -77,8 +86,11 @@ def create_voice_note_event(sender, instance, created, **kwargs):
     if created:
         try:
             orgnization = instance.organization
+            event_type = WE_SENT_AUDIO_NOTE
+            if not instance.is_parent:
+                event_type = SENT_US_AUDIO_NOTE
             event = Event.create_event_async(
-                event_type=VOICE_NOTE,
+                event_type=event_type,
                 source_user_id=instance.sender.id,
                 destination_user_id=instance.receiver.id,
                 status=SUCCESS,

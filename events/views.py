@@ -141,7 +141,6 @@ class EventPublicAPIView(CustomGenericAPIView):
                 "WE_SENT_AUDIO_NOTE",
                 "SENT_US_AUDIO_NOTE",
             ],
-            is_parent=False,
         )
         unseen_events_count = unseen_events.count()
 
@@ -153,7 +152,6 @@ class EventPublicAPIView(CustomGenericAPIView):
                 "MISSED_OUR_CALL",
                 "WE_SENT_AUDIO_NOTE",
             ],
-            is_parent=False,
         )
         new_events_count = new_events.count()
         last_recored_obj = {}
@@ -162,7 +160,6 @@ class EventPublicAPIView(CustomGenericAPIView):
             Event.objects.filter(
                 destination_user_id=endUserId,
                 event_type__in=["MISSED_OUR_CALL", "WE_SENT_AUDIO_NOTE"],
-                is_parent=False,
             )
             .order_by("-timestamp")
             .first()

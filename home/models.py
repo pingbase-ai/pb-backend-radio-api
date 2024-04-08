@@ -2,7 +2,7 @@ from django.db import models
 from user.models import User, Organization, EndUser
 from infra_utils.models import CreatedModifiedModel
 import uuid
-from .event_types import EVENT_TYPE_CHOICES
+from .event_types import EVENT_TYPE_CHOICES, CALL_SCHEDULED
 from django_q.tasks import async_task
 
 
@@ -35,7 +35,7 @@ class Meeting(CreatedModifiedModel):
     )
 
     event_type = models.CharField(
-        max_length=255, choices=EVENT_TYPE_CHOICES, default="Call Scheduled"
+        max_length=255, choices=EVENT_TYPE_CHOICES, default=CALL_SCHEDULED
     )
 
     # Field to differentiate between Client and Enduser Organizer
