@@ -386,7 +386,7 @@ class ActivitiesCreateModifyEndUserAPIView(CustomAPIView):
 
 class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
     permission_classes = (IsAuthenticated,)
-    parser_classes = (FileUploadParser,)
+    # parser_classes = (FileUploadParser,)
 
     def post(self, request, filename, *args, **kwargs):
         user = request.user
@@ -397,7 +397,7 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
 
         sender = user
         receiver = User.objects.filter(end_user__id=endUserId).first()
-        file = request.FILES["file"]
+        file = request.FILES.get("file")
         if not file:
             return Response(
                 {"message": "File not provided"},
@@ -503,16 +503,21 @@ class ActivitiesViewModifyVoiceNoteClientAPIView(CustomGenericAPIView):
 
 
 class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
-    parser_classes = (FileUploadParser,)
+    # parser_classes = (FileUploadParser,)
     permission_classes = (AllowAny,)
 
     def post(self, request, filename, *args, **kwargs):
 
         endUserId = request.query_params.get("endUserId")
         user = User.objects.filter(id=endUserId).first()
+        if not user:
+            return Response(
+                {"message": "End user not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         sender = user
         receiver = None
-        file = request.FILES["file"]
+        file = request.FILES.get("file")
         if not file:
             return Response(
                 {"message": "File not provided"},
