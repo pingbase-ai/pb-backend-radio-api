@@ -412,7 +412,7 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
         audio_file_url = upload_to_azure_blob(
             file,
             f"voice-notes/{user.client.organization.name}",
-            f"voice_note_{uuid.uuid4()}.webm",
+            f"voice_note_{uuid.uuid4()}.mp3",
         )
         logger.info(f"\n\n\n {audio_file_url} \n\n\n")
 
@@ -532,7 +532,7 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
         audio_file_url = upload_to_azure_blob(
             file,
             f"voice-notes/{user.end_user.organization.name}",
-            f"voice_note_{uuid.uuid4()}.webm",
+            f"voice_note_{uuid.uuid4()}.mp3",
         )
         logger.info(f"\n\n\n {audio_file_url} \n\n\n")
 

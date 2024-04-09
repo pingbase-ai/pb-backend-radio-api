@@ -38,6 +38,7 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
     storage_url = serializers.SerializerMethodField()
     is_seen_enduser = serializers.SerializerMethodField()
     is_played = serializers.SerializerMethodField()
+    is_unread = serializers.SerializerMethodField()
 
     def get_event_type(self, obj):
         return obj.event_type
@@ -176,6 +177,9 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
     def get_is_played(self, obj):
         return obj.is_played
 
+    def get_is_unread(self, obj):
+        return obj.is_unread
+
     class Meta:
         model = Event
         fields = [
@@ -209,6 +213,7 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             "storage_url",
             "is_seen_enduser",
             "is_played",
+            "is_unread",
         ]
 
 
@@ -234,6 +239,7 @@ class CustomEventSerializer(serializers.ModelSerializer):
     storage_url = serializers.SerializerMethodField()
     is_seen_enduser = serializers.SerializerMethodField()
     is_played = serializers.SerializerMethodField()
+    is_unread = serializers.SerializerMethodField()
 
     def get_event_type(self, obj):
         return obj.event_type
@@ -300,6 +306,9 @@ class CustomEventSerializer(serializers.ModelSerializer):
     def get_is_played(self, obj):
         return obj.is_played
 
+    def get_is_unread(self, obj):
+        return obj.is_unread
+
     class Meta:
         model = Event
         fields = [
@@ -322,6 +331,7 @@ class CustomEventSerializer(serializers.ModelSerializer):
             "storage_url",
             "is_seen_enduser",
             "is_played",
+            "is_unread",
         ]
 
 
