@@ -152,9 +152,10 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
 
                 userObj = User.objects.filter(id=user_id).first()
 
-                endUser = userObj.end_user
-                if endUser:
+                endUser = None
+                if hasattr(userObj, "end_user"):
                     organization = endUser.organization
+                    endUser = userObj.end_user
 
                 if name == "member_added":
                     # create a new EndUserLogin instance if the last EndUserLogin instance timestamp diff is greater than 1 hour
@@ -176,8 +177,6 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
 
                     # set user status to active
                     userObj.set_online_status(True)
-
-                    # TODO Send the same notification to slack
 
                 elif name == "member_removed":
                     userObj.set_online_status(False)
