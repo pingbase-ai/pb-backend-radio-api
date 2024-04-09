@@ -26,7 +26,7 @@ class DyteMeeting(CreatedModifiedModel):
         return f"{self.title}" + f" - {self.end_user.organization.name}"
 
     @staticmethod
-    def get_meeting_id(title, record_on_start=False, file_name_prefix=""):
+    def get_meeting_id(title, record_on_start=True, file_name_prefix=""):
         """
         Method to get the meeting ID.
 
@@ -96,7 +96,7 @@ class DyteMeeting(CreatedModifiedModel):
 
         meeting_id, meta_info = cls.get_meeting_id(
             title,
-            record_on_start=False,
+            record_on_start=True,
             file_name_prefix=f"{org_name}-{end_user_name}",
         )
 

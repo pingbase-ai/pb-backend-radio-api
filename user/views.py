@@ -837,9 +837,12 @@ class OnboardingView(CustomAPIView):
             )
         elif type == "integration_status":
             endUsersCount = EndUser.objects.filter(organization=organization).count()
+            client = user.client
             if endUsersCount > 0:
                 organization.onboarded = True
                 organization.save()
+                client.onboarded = True
+                client.save()
                 return Response(
                     {"message": "Integration Done"}, status=status.HTTP_200_OK
                 )
