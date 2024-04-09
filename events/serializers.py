@@ -35,6 +35,10 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
     enduser_trail_type = serializers.SerializerMethodField()
     enduser_linkedin = serializers.SerializerMethodField()
 
+    storage_url = serializers.SerializerMethodField()
+    is_seen_enduser = serializers.SerializerMethodField()
+    is_played = serializers.SerializerMethodField()
+
     def get_event_type(self, obj):
         return obj.event_type
 
@@ -163,6 +167,15 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             )
         return User.objects.filter(id=obj.source_user_id).first().end_user.linkedin
 
+    def get_storage_url(self, obj):
+        return obj.storage_url
+
+    def get_is_seen_enduser(self, obj):
+        return obj.is_seen_enduser
+
+    def get_is_played(self, obj):
+        return obj.is_played
+
     class Meta:
         model = Event
         fields = [
@@ -193,6 +206,9 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             "enduser_sessions",
             "enduser_trail_type",
             "enduser_linkedin",
+            "storage_url",
+            "is_seen_enduser",
+            "is_played",
         ]
 
 
@@ -214,6 +230,10 @@ class CustomEventSerializer(serializers.ModelSerializer):
     source_username = serializers.SerializerMethodField()
     destination_username = serializers.SerializerMethodField()
     timestamp = serializers.SerializerMethodField()
+
+    storage_url = serializers.SerializerMethodField()
+    is_seen_enduser = serializers.SerializerMethodField()
+    is_played = serializers.SerializerMethodField()
 
     def get_event_type(self, obj):
         return obj.event_type
@@ -271,6 +291,15 @@ class CustomEventSerializer(serializers.ModelSerializer):
     def get_timestamp(self, obj):
         return obj.timestamp
 
+    def get_storage_url(self, obj):
+        return obj.storage_url
+
+    def get_is_seen_enduser(self, obj):
+        return obj.is_seen_enduser
+
+    def get_is_played(self, obj):
+        return obj.is_played
+
     class Meta:
         model = Event
         fields = [
@@ -290,6 +319,9 @@ class CustomEventSerializer(serializers.ModelSerializer):
             "source_username",
             "destination_username",
             "timestamp",
+            "storage_url",
+            "is_seen_enduser",
+            "is_played",
         ]
 
 
