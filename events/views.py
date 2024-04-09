@@ -58,16 +58,38 @@ class EventListTypeAPIView(CustomGenericAPIListView):
             Response({"error": "Invalid type"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class EventUpdateAPIView(CustomGenericAPIView):
+class UnseenEventsAPIView(CustomGenericAPIView):
     permission_classes = (IsAuthenticated,)
+
+    # Fetch
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        organization = user.client.organization
+        endUserId = request.query_params.get("endUserId")
+        try:
+            events = Event.objects.filter(
+                organization=organization, source_user_id=endUserId, is_unread=True
+            ).count()
+
+            return Response(
+                {"unread_events": events},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            logger.error(f"Error while fetching events: {e}")
+            return Response(
+                {"error": "Something went wrong!"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def put(self, request, *args, **kwargs):
         user = request.user
         organization = user.client.organization
+        endUserId = request.query_params.get("endUserId")
         try:
-            event = Event.objects.filter(organization=organization).update(
-                is_unread=False
-            )
+            event = Event.objects.filter(
+                organization=organization, source_user_id=endUserId
+            ).update(is_unread=False)
             return Response(
                 {"message": f"All Events marked as read <-> {event}"},
                 status=status.HTTP_200_OK,
@@ -139,7 +161,6 @@ class EventPublicAPIView(CustomGenericAPIView):
                 "ANSWERED_OUR_CALL",
                 "MISSED_OUR_CALL",
                 "WE_SENT_AUDIO_NOTE",
-                "SENT_US_AUDIO_NOTE",
             ],
         )
         unseen_events_count = unseen_events.count()
@@ -183,7 +204,8 @@ class EventPublicAPIView(CustomGenericAPIView):
 
         organization_token = request.headers.get("organization-token")
         endUserId = request.query_params.get("endUserId")
-        eventId = request.query_params.get("eventId")
+        interactionId = request.query_params.get("interactionId", None)
+        updateType = request.query_params.get("updateType", None)
 
         if not organization_token:
             return Response(
@@ -197,7 +219,7 @@ class EventPublicAPIView(CustomGenericAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if not eventId:
+        if not interactionId and not updateType:
             event = Event.objects.filter(
                 destination_user_id=endUserId,
                 is_seen_enduser=False,
@@ -209,17 +231,30 @@ class EventPublicAPIView(CustomGenericAPIView):
                     "SENT_US_AUDIO_NOTE",
                 ],
             ).update(is_seen_enduser=True)
-        else:
-            event = Event.objects.filter(id=eventId).first()
+        elif interactionId and not updateType:
+            event = Event.objects.filter(interaction_id=interactionId).first()
+            if not event:
+                return Response(
+                    {"error": "Event not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             event.is_seen_enduser = True
-            event.is_played = True
-        if not event:
+            event.save()
             return Response(
-                {"error": "Event not found"},
-                status=status.HTTP_404_NOT_FOUND,
+                {"message": "Event marked as seen"}, status=status.HTTP_200_OK
             )
-        event.is_seen_enduser = True
-        event.save()
+        elif interactionId and updateType:
+            event = Event.objects.filter(interaction_id=interactionId).first()
+            if not event:
+                return Response(
+                    {"error": "Event not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            event.is_played = True
+            event.save()
+            return Response(
+                {"message": "Event marked as played"}, status=status.HTTP_200_OK
+            )
         return Response(
             {"message": "All Events marked as seen"}, status=status.HTTP_200_OK
         )

@@ -9,7 +9,7 @@ urlpatterns = [
         views.EventListTypeAPIView.as_view(),
         name="list_events",
     ),
-    path("update_events", views.EventUpdateAPIView.as_view(), name="update_events"),
+    path("unseen_events", views.UnseenEventsAPIView.as_view(), name="update_events"),
     path(
         "list_events_public",
         views.EventListPublicAPIView.as_view(),
