@@ -32,6 +32,7 @@ from .models import (
     CallYouBackNote,
     OutOfOfficeNote,
     Widget,
+    EndUser,
 )
 from pusher_channel_app.models import PusherChannelApp
 from .serializers import (
@@ -834,7 +835,19 @@ class OnboardingView(CustomAPIView):
                 {"message": "Code instructions shared successfully!"},
                 status=status.HTTP_200_OK,
             )
-
+        elif type == "integration_status":
+            endUsersCount = EndUser.objects.filter(organization=organization).count()
+            if endUsersCount > 0:
+                organization.onboarded = True
+                organization.save()
+                return Response(
+                    {"message": "Integration Done"}, status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    {"message": "Integration not done"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         else:
             return Response(
                 {"message": "Invalid onboarding type"},

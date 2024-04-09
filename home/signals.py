@@ -87,12 +87,15 @@ def create_voice_note_event(sender, instance, created, **kwargs):
         try:
             organization = instance.organization
             event_type = WE_SENT_AUDIO_NOTE
+            destination_user_id = None
             if not instance.is_parent:
                 event_type = SENT_US_AUDIO_NOTE
+            if instance.is_parent:
+                destination_user_id = instance.receiver.id
             event = Event.create_event_async(
                 event_type=event_type,
                 source_user_id=instance.sender.id,
-                destination_user_id=instance.receiver.id,
+                destination_user_id=destination_user_id,
                 status=SUCCESS,
                 duration=0,
                 frontend_screen="VoiceNote",
