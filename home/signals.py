@@ -48,6 +48,8 @@ def create_login_event(sender, instance, created, **kwargs):
                 is_parent=False,
                 storage_url=None,
                 organization=organization,
+                request_meta=None,
+                error_stack_trace=None,
             )
 
             # send pusher notification about the new login

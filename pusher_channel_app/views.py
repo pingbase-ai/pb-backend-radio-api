@@ -159,7 +159,7 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
                 if name == "member_added":
                     # create a new EndUserLogin instance if the last EndUserLogin instance timestamp diff is greater than 1 hour
                     if endUser:
-                        logger.info(f"\n\n\n creating login event for {endUser} \n\n\n")
+
                         last_login = (
                             EndUserLogin.objects.filter(end_user=endUser)
                             .order_by("-created_at")
@@ -169,8 +169,10 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
                             (timezone.now() - last_login.created_at).total_seconds()
                             > 3600
                         ):
+                            logger.info(
+                                f"\n\n\n creating login event for {endUser} \n\n\n"
+                            )
                             # Create a new EndUserLogin instance
-                            # ...
                             async_id = EndUserLogin.create_login_async(
                                 endUser, organization
                             )
