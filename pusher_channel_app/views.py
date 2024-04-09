@@ -127,8 +127,6 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
     def post(self, request):
 
         # pusher_client = PusherClientSingleton().get_client()
-        logger.info(f"\n\n\nrequest.headers: {request.headers} \n\n\n")
-
         pusher_key: str = request.headers.get("X-Pusher-Key")
 
         verified_request = PusherClientSingleton().verify_pusher_key(pusher_key)
@@ -154,12 +152,14 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
 
                 endUser = None
                 if hasattr(userObj, "end_user"):
-                    organization = endUser.organization
                     endUser = userObj.end_user
+                    if endUser:
+                        organization = endUser.organization
 
                 if name == "member_added":
                     # create a new EndUserLogin instance if the last EndUserLogin instance timestamp diff is greater than 1 hour
                     if endUser:
+                        logger.info(f"\n\n\n creating login event for {endUser} \n\n\n")
                         last_login = (
                             EndUserLogin.objects.filter(end_user=endUser)
                             .order_by("-created_at")
