@@ -16,7 +16,7 @@ from home.event_types import (
 )
 from integrations.slack.utils import create_message_compact, Slack
 from integrations.slack.models import SlackOAuth
-
+from integrations.pusher.utils import publish_event_to_client
 
 import logging
 
@@ -34,7 +34,7 @@ def create_login_event(sender, instance, created, **kwargs):
     if created:
         try:
             organization = instance.organization
-            event = Event.create_event_async(
+            event = Event.create_event(
                 event_type=LOGGED_IN,
                 source_user_id=instance.end_user.user.id,
                 destination_user_id=None,
@@ -48,7 +48,30 @@ def create_login_event(sender, instance, created, **kwargs):
                 is_parent=False,
                 storage_url=None,
                 organization=organization,
+                request_meta=None,
+                error_stack_trace=None,
             )
+
+            # send pusher notification about the new login
+            userObj = instance.end_user.user
+            pusher_data_obj = {
+                "source_event_type": "login",
+                "id": str(event.id),
+                "sender": f"{str(userObj.first_name)} {str(userObj.last_name)}",
+                "company": f"{instance.end_user.company}",
+                "timestamp": str(event.created_at),
+            }
+            try:
+                publish_event_to_client(
+                    organization.token,
+                    "private",
+                    "enduser-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error while sending pusher notification for enduser login event:  {e}"
+                )
 
         except Exception as e:
             logger.error(f"Error while creating login event: {e}")
@@ -183,7 +206,7 @@ def create_meeting_event(sender, instance, created, **kwargs):
     if created:
         try:
             organization = instance.organization
-            event = Event.create_event_async(
+            event = Event.create_event(
                 event_type=instance.event_type,
                 source_user_id=instance.organizer.id,
                 destination_user_id=None,
@@ -197,7 +220,29 @@ def create_meeting_event(sender, instance, created, **kwargs):
                 is_parent=False,
                 storage_url=None,
                 organization=organization,
+                request_meta=None,
+                error_stack_trace=None,
             )
+
+            userObj = instance.organizer
+            pusher_data_obj = {
+                "source_event_type": "scheduled_meeting",
+                "id": str(event.id),
+                "sender": f"{str(userObj.first_name)} {str(userObj.last_name)}",
+                "company": f"{instance.end_user.company}",
+                "timestamp": str(event.created_at),
+                "scheduled_time": str(instance.start_time),
+            }
+            try:
+                publish_event_to_client(
+                    organization.token,
+                    "private",
+                    "enduser-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(f"Error while publishing voice note created event: {e}")
+
         except Exception as e:
             logger.error(f"Error while creating meeting event: {e}")
         finally:

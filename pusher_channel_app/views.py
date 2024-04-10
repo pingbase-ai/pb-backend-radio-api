@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from user.models import Client, Organization, EndUser, User
 from django.views.decorators.csrf import csrf_exempt
 from events.models import Event
+from django.utils import timezone
 
 from rest_framework.request import Request
 from .utils import publish_event_to_pusher, PusherClientSingleton
@@ -123,11 +124,9 @@ class PusherChannelAppCompanyView(generics.GenericAPIView):  # Fix the base clas
 
 class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
 
-    def post(self, request):  # Add the return type annotation
+    def post(self, request):
 
         # pusher_client = PusherClientSingleton().get_client()
-        logger.info(f"\n\n\nrequest.headers: {request.headers} \n\n\n")
-
         pusher_key: str = request.headers.get("X-Pusher-Key")
 
         verified_request = PusherClientSingleton().verify_pusher_key(pusher_key)
@@ -151,21 +150,35 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
 
                 userObj = User.objects.filter(id=user_id).first()
 
-                endUser = userObj.end_user
-                if endUser:
-                    organization = endUser.organization
+                endUser = None
+                if hasattr(userObj, "end_user"):
+                    endUser = userObj.end_user
+                    if endUser:
+                        organization = endUser.organization
 
                 if name == "member_added":
-                    # create a new EndUserLogin instance
+                    # create a new EndUserLogin instance if the last EndUserLogin instance timestamp diff is greater than 1 hour
                     if endUser:
-                        async_id = EndUserLogin.create_login_async(
-                            endUser, organization
+
+                        last_login = (
+                            EndUserLogin.objects.filter(end_user=endUser)
+                            .order_by("-created_at")
+                            .first()
                         )
+                        if not last_login or (
+                            (timezone.now() - last_login.created_at).total_seconds()
+                            > 3600
+                        ):
+                            logger.info(
+                                f"\n\n\n creating login event for {endUser} \n\n\n"
+                            )
+                            # Create a new EndUserLogin instance
+                            async_id = EndUserLogin.create_login_async(
+                                endUser, organization
+                            )
 
                     # set user status to active
                     userObj.set_online_status(True)
-
-                    # TODO Send the same notification to slack
 
                 elif name == "member_removed":
                     userObj.set_online_status(False)

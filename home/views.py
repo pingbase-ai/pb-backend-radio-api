@@ -6,7 +6,7 @@ from rest_framework import permissions, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.views.decorators.csrf import csrf_exempt
 from django_q.tasks import async_task
-
+from django.utils import timezone
 from .serializers import (
     MeetingSerializer,
     CallSerializer,
@@ -550,7 +550,10 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
                 "source_event_type": "voice_note",
                 "id": str(voice_note.voice_note_id),
                 "storage_url": audio_file_url,
-                "sender": sender.first_name,
+                "sender": f"{sender.first_name} {sender.last_name}",
+                "company": f"{sender.end_user.company}",
+                "timestamp": str(voice_note.created_at),
+                "unique_id": f"{sender.id}",
             }
             try:
                 publish_event_to_client(
@@ -845,6 +848,28 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
+
+                # Send pusher notification to the clients that call is accepted
+                try:
+                    pusher_data_obj = {
+                        "source_event_type": "call_accepted",
+                        "id": str(call.call_id),
+                        "meeting_id": call.caller.end_user.dyte_meeting.meeting_id,
+                        "storage_url": "",
+                        "sender": f"{call.caller.first_name} {call.caller.last_name}",
+                        "company": f"{call.caller.end_user.company}",
+                        "timestamp": str(call.created_at),
+                        "unique_id": f"{call.caller.id}",
+                    }
+                    publish_event_to_client(
+                        str(organization.token),
+                        "private",
+                        "enduser-event",
+                        pusher_data_obj,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while publishing call scheduled event: {e}")
+
             elif update_type == "mark_as_completed":
                 call.status = "completed"
                 call.save()
@@ -954,8 +979,11 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                 "source_event_type": "call",
                 "id": str(call.call_id),
                 "meeting_id": endUserMeetingId,
-                "sender": endUser.user.first_name,
                 "storage_url": "",
+                "sender": f"{caller.first_name} {caller.last_name}",
+                "company": f"{caller.end_user.company}",
+                "timestamp": str(call.created_at),
+                "unique_id": f"{caller.id}",
             }
             try:
                 publish_event_to_client(
@@ -1061,8 +1089,11 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                 pusher_data_obj = {
                     "source_event_type": "missed-call",
                     "id": str(call.call_id),
-                    "sender": call.caller.first_name,
                     "storage_url": "",
+                    "sender": f"{call.caller.first_name} {call.caller.last_name}",
+                    "company": f"{call.caller.end_user.company}",
+                    "timestamp": str(timezone.now()),
+                    "unique_id": f"{call.caller.id}",
                 }
             try:
                 publish_event_to_client(
