@@ -1037,13 +1037,13 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
         endUserId = request.query_params.get("endUserId")
         call_id = request.data.get("call_id", None)
         update_type = request.data.get("update_type", None)
-        organization = call.organization
         if not call_id or not update_type:
             return Response(
                 {"message": "call_id or update_type not provided"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         call = Call.objects.filter(call_id=call_id).first()
+        organization = call.organization
         if not call:
             return Response(
                 {"message": "Call not found"},
