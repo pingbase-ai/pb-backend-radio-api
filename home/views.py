@@ -904,21 +904,23 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                     logger.error(f"Error while publishing call scheduled event: {e}")
                 try:
                     organization = call.organization
-                    event = Event.create_event_async(
-                        event_type=MISSED_OUR_CALL,
-                        source_user_id=call.caller.id,
-                        destination_user_id=call.receiver.id,
-                        status=SUCCESS,
-                        duration=0,
-                        frontend_screen="NA",
-                        agent_name=agent_name,
-                        initiated_by=MANUAL,
-                        interaction_type=CALL,
-                        interaction_id=call.call_id,
-                        is_parent=call.is_parent,
-                        storage_url=call.file_url,
-                        organization=organization,
-                    )
+                    existingEvent = Event.objects.filter(interaction_id=call.call_id)
+                    if not existingEvent:
+                        event = Event.create_event_async(
+                            event_type=MISSED_OUR_CALL,
+                            source_user_id=call.caller.id,
+                            destination_user_id=call.receiver.id,
+                            status=SUCCESS,
+                            duration=0,
+                            frontend_screen="NA",
+                            agent_name=agent_name,
+                            initiated_by=MANUAL,
+                            interaction_type=CALL,
+                            interaction_id=call.call_id,
+                            is_parent=call.is_parent,
+                            storage_url=call.file_url,
+                            organization=organization,
+                        )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
             return Response(
@@ -1113,21 +1115,28 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     agent_name = call.receiver.first_name if call.receiver else None
 
                 try:
-                    event = Event.create_event_async(
-                        event_type=MISSED_THEIR_CALL,
-                        source_user_id=call.caller.id,
-                        destination_user_id=call.receiver.id,
-                        status=SUCCESS,
-                        duration=0,
-                        frontend_screen="NA",
-                        agent_name=agent_name,
-                        initiated_by=MANUAL,
-                        interaction_type=CALL,
-                        interaction_id=call.call_id,
-                        is_parent=call.is_parent,
-                        storage_url=call.file_url,
-                        organization=organization,
-                    )
+                    # check if event with interaction_id already exists
+                    existingEvent = Event.objects.filter(
+                        interaction_id=call.call_id
+                    ).first()
+                    if not existingEvent:
+                        event = Event.create_event_async(
+                            event_type=MISSED_THEIR_CALL,
+                            source_user_id=call.caller.id,
+                            destination_user_id=None,
+                            status=SUCCESS,
+                            duration=0,
+                            frontend_screen="NA",
+                            agent_name=agent_name,
+                            initiated_by=MANUAL,
+                            interaction_type=CALL,
+                            interaction_id=call.call_id,
+                            is_parent=call.is_parent,
+                            storage_url=call.file_url,
+                            organization=organization,
+                            error_stack_trace=None,
+                            request_meta=None,
+                        )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
 
