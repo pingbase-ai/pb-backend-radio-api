@@ -16,7 +16,7 @@ from home.event_types import (
 )
 from integrations.slack.utils import create_message_compact, Slack
 from integrations.slack.models import SlackOAuth
-from integrations.pusher.utils import publish_event_to_client
+from pusher_channel_app.utils import publish_event_to_client
 
 import logging
 
