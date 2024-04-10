@@ -1059,10 +1059,10 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     # send back a automated message to the endUser
                     # if the call has happend within office hours -> call_you_back_note
                     # if the call has happend outside office hours -> out_of_office_note
-                    is_request_within_office_hours = is_request_within_office_hours(
-                        organization
+                    is_request_within_office_hours_bool = (
+                        is_request_within_office_hours(organization)
                     )
-                    if is_request_within_office_hours:
+                    if is_request_within_office_hours_bool:
                         task_id = async_task(
                             "user.tasks.send_voice_note",
                             endUserId,
