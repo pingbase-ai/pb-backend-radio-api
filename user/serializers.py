@@ -257,6 +257,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_active",
             "is_online",
             "last_login",
+            "photo",
         ]
 
 
