@@ -377,8 +377,8 @@ class OnboardingSession(CreatedModifiedModel):
 class Widget(models.Model):
 
     AVATAR_CHOICES = [
-        ("1", "Avatar 1"),
-        ("2", "Avatar 2"),
+        ("avatar1", "Avatar 1"),
+        ("avatar2", "Avatar 2"),
         # Add more predefined avatars here
     ]
 
