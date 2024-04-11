@@ -46,6 +46,7 @@ from .serializers import (
     OrganizationSerializer,
     SetNewPasswordAdhocSerializer,
     ClientMemberSerializer,
+    CustomEndUserSerializer,
 )
 from infra_utils.views import (
     CustomAPIView,
@@ -1320,7 +1321,7 @@ class ResetPasswordAdhocView(CustomGenericAPIView):
 
 class EndUserList(CustomGenericAPIListView):
     permission_classes = (permissions.IsAuthenticated,)
-    serializer_class = EndUserListSerializer
+    serializer_class = CustomEndUserSerializer
 
     def get(self, request, search, *args, **kwargs):
         user = request.user
