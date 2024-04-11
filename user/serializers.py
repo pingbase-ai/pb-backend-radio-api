@@ -285,7 +285,7 @@ class OfficeHoursSerializer(serializers.ModelSerializer):
 class WidgetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Widget
-        fields = ["avatar", "position"]
+        fields = ["avatar", "position", "is_active"]
 
 
 class WelcomeNoteSerializer(serializers.ModelSerializer):
