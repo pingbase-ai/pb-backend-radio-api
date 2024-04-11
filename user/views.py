@@ -46,6 +46,7 @@ from .serializers import (
     OrganizationSerializer,
     SetNewPasswordAdhocSerializer,
     ClientMemberSerializer,
+    CustomEndUserSerializer,
 )
 from infra_utils.views import (
     CustomAPIView,
@@ -697,6 +698,7 @@ class OnboardingView(CustomAPIView):
             if widgetObj:
                 widgetObj.avatar = data.get("avatar")
                 widgetObj.position = data.get("position")
+                widgetObj.is_active = data.get("is_active", True)
                 widgetObj.save()
                 return Response(
                     {"message": "Widget updated"}, status=status.HTTP_200_OK
@@ -1320,7 +1322,7 @@ class ResetPasswordAdhocView(CustomGenericAPIView):
 
 class EndUserList(CustomGenericAPIListView):
     permission_classes = (permissions.IsAuthenticated,)
-    serializer_class = EndUserListSerializer
+    serializer_class = CustomEndUserSerializer
 
     def get(self, request, search, *args, **kwargs):
         user = request.user

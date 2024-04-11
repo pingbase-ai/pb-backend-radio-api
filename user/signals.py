@@ -2,11 +2,12 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from dyte.models import DyteMeeting, DyteAuthToken
 from django.conf import settings
-from user.models import EndUser
+from user.models import EndUser, Widget
 from django_q.tasks import schedule
 from datetime import timedelta
 from django.utils import timezone
 from .utils import get_linkedIn_url
+from pusher_channel_app.utils import publish_event_to_client
 
 
 import logging
@@ -60,3 +61,21 @@ def fetch_linkedIn_url(sender, instance, created, **kwargs):
                     instance.save()
         except Exception as e:
             logger.error(f"Error while fetching LinkedIn URL: {e}")
+
+
+@receiver(post_save, sender=Widget)
+def widget_updated(sender, instance, created, **kwargs):
+    if not created:
+        try:
+            pusher_data_obj = {
+                "source_event_type": "widget_status_check",
+            }
+
+            publish_event_to_client(
+                instance.organization.token,
+                "private",
+                "master-event",
+                pusher_data_obj,
+            )
+        except Exception as e:
+            logger.error(f"Error while sending notification to all widgets: {e}")
