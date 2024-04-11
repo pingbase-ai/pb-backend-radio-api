@@ -56,7 +56,7 @@ urlpatterns = [
     path("profile-pic", views.ProfilePicView.as_view(), name="profile-pic"),
     path("members", views.MemberList.as_view(), name="client-member-list"),
     path(
-        "end-users/<slug:search>/",
+        "end-users",
         views.EndUserList.as_view(),
         name="end-user-list",
     ),

@@ -1324,10 +1324,11 @@ class EndUserList(CustomGenericAPIListView):
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = CustomEndUserSerializer
 
-    def get(self, request, search, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         user = request.user
 
         client = Client.objects.filter(user=user).first()
+        query = request.query_params.get("search", None)
 
         if not client:
             return Response(
@@ -1335,8 +1336,8 @@ class EndUserList(CustomGenericAPIListView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         try:
-            if search:
-                search = search.lower()
+            if query:
+                search = query.lower()
                 filtered_users_ids = User.objects.filter(
                     Q(first_name__icontains=search) | Q(last_name__icontains=search)
                 ).values_list("id", flat=True)
