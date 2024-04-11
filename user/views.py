@@ -588,6 +588,22 @@ class ProfilePicView(CustomGenericAPIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    def delete(self, request):
+        user = request.user
+        try:
+            user.photo = None
+            user.save()
+            return Response(
+                {"message": "Profile picture deleted successfully"},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return Response(
+                {"message": "Something went wrong"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class OnboardingView(CustomAPIView):
     permission_classes = (permissions.IsAuthenticated,)
