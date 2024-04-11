@@ -948,7 +948,7 @@ class CreateEndUserView(CustomGenericAPIView):
             "last_name": request.data.get("last_name"),
             "email": request.data.get("email"),
             "role": request.data.get("role"),
-            "trail_type": request.data.get("trail_type"),
+            "trial_type": request.data.get("trial_type"),
             "company": request.data.get("company"),
         }
         serializer = EndUserSerializer(data=required_data)
@@ -957,7 +957,7 @@ class CreateEndUserView(CustomGenericAPIView):
             return Response(
                 {
                     "message": "EndUser created successfully.",
-                    "end_user_id": end_user.user.id,
+                    "id": end_user.user.id,
                 },
                 status=status.HTTP_201_CREATED,
             )

@@ -155,9 +155,9 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             return (
                 User.objects.filter(id=obj.destination_user_id)
                 .first()
-                .end_user.trail_type
+                .end_user.trial_type
             )
-        return User.objects.filter(id=obj.source_user_id).first().end_user.trail_type
+        return User.objects.filter(id=obj.source_user_id).first().end_user.trial_type
 
     def get_enduser_linkedin(self, obj):
         if obj.is_parent:

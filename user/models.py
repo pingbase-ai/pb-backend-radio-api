@@ -243,7 +243,7 @@ class EndUser(CreatedModifiedModel):
     is_trial = models.BooleanField(default=True)
     role = models.CharField(max_length=200, null=True, blank=True)
     total_sessions = models.IntegerField(default=0)
-    trail_type = models.CharField(max_length=200, null=True, blank=True)
+    trial_type = models.CharField(max_length=200, null=True, blank=True)
     priority = models.CharField(max_length=200, choices=PRIORITY_CHOICES, default=LOW)
     company = models.CharField(max_length=200, null=True, blank=True)
     linkedin = models.TextField(null=True, blank=True)

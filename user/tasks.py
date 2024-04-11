@@ -3,6 +3,8 @@ from .models import User, EndUser, Organization
 from pusher_channel_app.utils import publish_event_to_user
 from .constants import PINGBASE_BOT
 from infra_utils.utils import encode_base64
+from events.models import Event
+from home.event_types import WE_SENT_AUDIO_NOTE, SUCCESS, AUTOMATIC, VOICE_NOTE
 
 import logging
 
@@ -11,9 +13,10 @@ logger = logging.getLogger("django")
 
 
 def send_voice_note(user_id, type):
-    endUser = EndUser.objects.get(id=user_id)
+    user = User.objects.get(id=user_id)
+    endUser = user.end_user
     organization = endUser.organization
-
+    event_type = WE_SENT_AUDIO_NOTE
     if type == "welcome_note":
         if not endUser.welcome_note_sent:
             welcomeNote = organization.welcome_note
@@ -21,6 +24,26 @@ def send_voice_note(user_id, type):
             play_time = welcomeNote.play_time
             title = welcomeNote.title
             description = welcomeNote.description
+
+            try:
+                # create events for the voice note
+                event = Event.create_event_async(
+                    event_type=event_type,
+                    source_user_id=None,
+                    destination_user_id=user.id,
+                    status=SUCCESS,
+                    duration=0,
+                    frontend_screen="VoiceNote",
+                    agent_name=None,
+                    initiated_by=AUTOMATIC,
+                    interaction_type=VOICE_NOTE,
+                    interaction_id=welcomeNote.id,
+                    is_parent=True,
+                    storage_url=storage_url,
+                    organization=organization,
+                )
+            except Exception as e:
+                logger.error(f"Error while creating welcome note event: {e}")
 
             pusher_data_obj = {
                 "source_event_type": "voice_note",
@@ -36,7 +59,7 @@ def send_voice_note(user_id, type):
                 publish_event_to_user(
                     organization.token,
                     "private",
-                    encode_base64(f"{endUser.id}"),
+                    encode_base64(f"{user.id}"),
                     "client-event",
                     pusher_data_obj,
                 )
@@ -62,11 +85,31 @@ def send_voice_note(user_id, type):
             "description": description,
             "event_type": "call_you_back_note",
         }
+
+        try:
+            # create a call you back note event
+            event = Event.create_event_async(
+                event_type=event_type,
+                source_user_id=None,
+                destination_user_id=user.id,
+                status=SUCCESS,
+                duration=0,
+                frontend_screen="VoiceNote",
+                agent_name=None,
+                initiated_by=AUTOMATIC,
+                interaction_type=VOICE_NOTE,
+                interaction_id=callYouBackNote.id,
+                is_parent=True,
+                storage_url=storage_url,
+                organization=organization,
+            )
+        except Exception as e:
+            logger.error(f"Error while creating call you back note event: {e}")
         try:
             publish_event_to_user(
                 organization.token,
                 "private",
-                encode_base64(f"{endUser.id}"),
+                encode_base64(f"{user.id}"),
                 "client-event",
                 pusher_data_obj,
             )
@@ -89,11 +132,31 @@ def send_voice_note(user_id, type):
             "description": description,
             "event_type": "out_of_office_note",
         }
+
+        try:
+            # create an out of office note event
+            event = Event.create_event_async(
+                event_type=event_type,
+                source_user_id=None,
+                destination_user_id=user.id,
+                status=SUCCESS,
+                duration=0,
+                frontend_screen="VoiceNote",
+                agent_name=None,
+                initiated_by=AUTOMATIC,
+                interaction_type=VOICE_NOTE,
+                interaction_id=outOfOfficeNote.id,
+                is_parent=True,
+                storage_url=storage_url,
+                organization=organization,
+            )
+        except Exception as e:
+            logger.error(f"Error while creating out of office note event: {e}")
         try:
             publish_event_to_user(
                 organization.token,
                 "private",
-                encode_base64(f"{endUser.id}"),
+                encode_base64(f"{user.id}"),
                 "client-event",
                 pusher_data_obj,
             )

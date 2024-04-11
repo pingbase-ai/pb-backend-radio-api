@@ -4,6 +4,7 @@ from home.models import Meeting, Call, VoiceNote, EndUserLogin
 from django.conf import settings
 from user.models import EndUser
 from events.models import Event
+from django.utils import timezone
 from home.event_types import (
     LOGGED_IN,
     SUCCESS,
@@ -16,7 +17,7 @@ from home.event_types import (
 )
 from integrations.slack.utils import create_message_compact, Slack
 from integrations.slack.models import SlackOAuth
-from integrations.pusher.utils import publish_event_to_client
+from pusher_channel_app.utils import publish_event_to_client
 
 import logging
 
@@ -59,7 +60,8 @@ def create_login_event(sender, instance, created, **kwargs):
                 "id": str(event.id),
                 "sender": f"{str(userObj.first_name)} {str(userObj.last_name)}",
                 "company": f"{instance.end_user.company}",
-                "timestamp": str(event.created_at),
+                "timestamp": str(timezone.now()),
+                "role": f"{instance.end_user.role}",
             }
             try:
                 publish_event_to_client(
@@ -230,8 +232,9 @@ def create_meeting_event(sender, instance, created, **kwargs):
                 "id": str(event.id),
                 "sender": f"{str(userObj.first_name)} {str(userObj.last_name)}",
                 "company": f"{instance.end_user.company}",
-                "timestamp": str(event.created_at),
+                "timestamp": str(timezone.now()),
                 "scheduled_time": str(instance.start_time),
+                "role": f"{instance.end_user.role}",
             }
             try:
                 publish_event_to_client(

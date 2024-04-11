@@ -35,7 +35,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
     email = serializers.SerializerMethodField()
     company = serializers.SerializerMethodField()
     sessions = serializers.SerializerMethodField()
-    trail_type = serializers.SerializerMethodField()
+    trial_type = serializers.SerializerMethodField()
     linkedin = serializers.SerializerMethodField()
 
     def get_id(self, obj):
@@ -65,8 +65,8 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
     def get_sessions(self, obj):
         return obj.total_sessions
 
-    def get_trail_type(self, obj):
-        return obj.trail_type
+    def get_trial_type(self, obj):
+        return obj.trial_type
 
     def get_linkedin(self, obj):
 
@@ -84,7 +84,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
             "email",
             "company",
             "sessions",
-            "trail_type",
+            "trial_type",
             "linkedin",
         ]
 
@@ -96,6 +96,9 @@ class EndUserSerializer(serializers.ModelSerializer):
     organization_name = serializers.CharField(
         write_only=True,
     )
+    role = serializers.CharField(write_only=True)
+    trial_type = serializers.CharField(write_only=True)
+    company = serializers.CharField(write_only=True)
 
     class Meta:
         model = EndUser
@@ -104,11 +107,9 @@ class EndUserSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "organization_name",
-            "is_trial",
             "role",
-            "total_sessions",
-            "trail_type",
-            "priority",
+            "trial_type",
+            "company",
         ]
 
     def create(self, validated_data):
@@ -472,7 +473,7 @@ class EndUserListSerializer(serializers.ModelSerializer):
             "is_trial",
             "role",
             "total_sessions",
-            "trail_type",
+            "trial_type",
             "priority",
             "company",
         ]
