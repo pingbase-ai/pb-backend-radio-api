@@ -24,24 +24,27 @@ def send_voice_note(user_id, type):
             title = welcomeNote.title
             description = welcomeNote.description
 
-            # create events for the voice note
-            welcome_note_event = Event.create_event_async(
-                "voice_note",
-                None,
-                user.id,
-                "completed",
-                play_time,
-                "welcome_note",
-                None,
-                None,
-                PINGBASE_BOT,
-                None,
-                None,
-                None,
-                True,
-                storage_url,
-                organization,
-            )
+            try:
+                # create events for the voice note
+                welcome_note_event = Event.create_event_async(
+                    "voice_note",
+                    None,
+                    user.id,
+                    "completed",
+                    None,
+                    "welcome_note",
+                    None,
+                    None,
+                    PINGBASE_BOT,
+                    None,
+                    None,
+                    None,
+                    True,
+                    storage_url,
+                    organization,
+                )
+            except Exception as e:
+                logger.error(f"Error while creating welcome note event: {e}")
 
             pusher_data_obj = {
                 "source_event_type": "voice_note",
@@ -84,24 +87,27 @@ def send_voice_note(user_id, type):
             "event_type": "call_you_back_note",
         }
 
-        # create a call you back note event
-        call_you_back_note_event = Event.create_event_async(
-            "voice_note",
-            None,
-            user.id,
-            "completed",
-            play_time,
-            "call_you_back_note",
-            None,
-            None,
-            PINGBASE_BOT,
-            None,
-            None,
-            None,
-            True,
-            storage_url,
-            organization,
-        )
+        try:
+            # create a call you back note event
+            call_you_back_note_event = Event.create_event_async(
+                "voice_note",
+                None,
+                user.id,
+                "completed",
+                None,
+                "call_you_back_note",
+                None,
+                None,
+                PINGBASE_BOT,
+                None,
+                None,
+                None,
+                True,
+                storage_url,
+                organization,
+            )
+        except Exception as e:
+            logger.error(f"Error while creating call you back note event: {e}")
         try:
             publish_event_to_user(
                 organization.token,
@@ -130,24 +136,27 @@ def send_voice_note(user_id, type):
             "event_type": "out_of_office_note",
         }
 
-        # create an out of office note event
-        out_of_office_note_event = Event.create_event_async(
-            "voice_note",
-            None,
-            user.id,
-            "completed",
-            play_time,
-            "out_of_office_note",
-            None,
-            None,
-            PINGBASE_BOT,
-            None,
-            None,
-            None,
-            True,
-            storage_url,
-            organization,
-        )
+        try:
+            # create an out of office note event
+            out_of_office_note_event = Event.create_event_async(
+                "voice_note",
+                None,
+                user.id,
+                "completed",
+                None,
+                "out_of_office_note",
+                None,
+                None,
+                PINGBASE_BOT,
+                None,
+                None,
+                None,
+                True,
+                storage_url,
+                organization,
+            )
+        except Exception as e:
+            logger.error(f"Error while creating out of office note event: {e}")
         try:
             publish_event_to_user(
                 organization.token,
