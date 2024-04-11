@@ -3,6 +3,7 @@ from .models import User, EndUser, Organization
 from pusher_channel_app.utils import publish_event_to_user
 from .constants import PINGBASE_BOT
 from infra_utils.utils import encode_base64
+from events.models import Event
 
 import logging
 
@@ -22,6 +23,25 @@ def send_voice_note(user_id, type):
             play_time = welcomeNote.play_time
             title = welcomeNote.title
             description = welcomeNote.description
+
+            # create events for the voice note
+            welcome_note_event = Event.create_event_async(
+                "voice_note",
+                None,
+                user.id,
+                "completed",
+                play_time,
+                "welcome_note",
+                None,
+                None,
+                PINGBASE_BOT,
+                None,
+                None,
+                None,
+                True,
+                storage_url,
+                organization,
+            )
 
             pusher_data_obj = {
                 "source_event_type": "voice_note",
@@ -63,6 +83,25 @@ def send_voice_note(user_id, type):
             "description": description,
             "event_type": "call_you_back_note",
         }
+
+        # create a call you back note event
+        call_you_back_note_event = Event.create_event_async(
+            "voice_note",
+            None,
+            user.id,
+            "completed",
+            play_time,
+            "call_you_back_note",
+            None,
+            None,
+            PINGBASE_BOT,
+            None,
+            None,
+            None,
+            True,
+            storage_url,
+            organization,
+        )
         try:
             publish_event_to_user(
                 organization.token,
@@ -90,6 +129,25 @@ def send_voice_note(user_id, type):
             "description": description,
             "event_type": "out_of_office_note",
         }
+
+        # create an out of office note event
+        out_of_office_note_event = Event.create_event_async(
+            "voice_note",
+            None,
+            user.id,
+            "completed",
+            play_time,
+            "out_of_office_note",
+            None,
+            None,
+            PINGBASE_BOT,
+            None,
+            None,
+            None,
+            True,
+            storage_url,
+            organization,
+        )
         try:
             publish_event_to_user(
                 organization.token,
