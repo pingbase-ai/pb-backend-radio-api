@@ -1117,7 +1117,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     pusher_data_obj,
                 )
             except Exception as e:
-                logger.error(f"Error while publishing call scheduled event: {e}")
+                logger.error(f"Error while publishing missed call event: {e}")
 
                 # Create a new event type for this update
                 agent_name = None
@@ -1131,6 +1131,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     existingEvent = Event.objects.filter(
                         interaction_id=call.call_id
                     ).first()
+                    logger.info(f"\n\n\n existingEvent: {existingEvent} \n\n\n")
                     if not existingEvent:
                         event = Event.create_event_async(
                             event_type=MISSED_THEIR_CALL,

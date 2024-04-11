@@ -41,7 +41,7 @@ def send_welcome_note(sender, instance, created, **kwargs):
         delay_time = int(instance.organization.auto_sent_after)
         schedule(
             "user.tasks.send_voice_note",
-            instance.id,
+            instance.user.id,
             "welcome_note",
             schedule_type="O",
             next_run=timezone.now() + timedelta(seconds=delay_time),
