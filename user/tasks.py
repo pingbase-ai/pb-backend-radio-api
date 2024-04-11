@@ -4,6 +4,7 @@ from pusher_channel_app.utils import publish_event_to_user
 from .constants import PINGBASE_BOT
 from infra_utils.utils import encode_base64
 from events.models import Event
+from home.event_types import WE_SENT_AUDIO_NOTE, SUCCESS, AUTOMATIC, VOICE_NOTE
 
 import logging
 
@@ -15,7 +16,7 @@ def send_voice_note(user_id, type):
     user = User.objects.get(id=user_id)
     endUser = user.end_user
     organization = endUser.organization
-
+    event_type = WE_SENT_AUDIO_NOTE
     if type == "welcome_note":
         if not endUser.welcome_note_sent:
             welcomeNote = organization.welcome_note
@@ -26,22 +27,20 @@ def send_voice_note(user_id, type):
 
             try:
                 # create events for the voice note
-                welcome_note_event = Event.create_event_async(
-                    "voice_note",
-                    None,
-                    user.id,
-                    "completed",
-                    None,
-                    "welcome_note",
-                    None,
-                    None,
-                    PINGBASE_BOT,
-                    None,
-                    None,
-                    None,
-                    True,
-                    storage_url,
-                    organization,
+                event = Event.create_event_async(
+                    event_type=event_type,
+                    source_user_id=None,
+                    destination_user_id=user.id,
+                    status=SUCCESS,
+                    duration=0,
+                    frontend_screen="VoiceNote",
+                    agent_name=None,
+                    initiated_by=AUTOMATIC,
+                    interaction_type=VOICE_NOTE,
+                    interaction_id=welcomeNote.id,
+                    is_parent=True,
+                    storage_url=storage_url,
+                    organization=organization,
                 )
             except Exception as e:
                 logger.error(f"Error while creating welcome note event: {e}")
@@ -89,22 +88,20 @@ def send_voice_note(user_id, type):
 
         try:
             # create a call you back note event
-            call_you_back_note_event = Event.create_event_async(
-                "voice_note",
-                None,
-                user.id,
-                "completed",
-                None,
-                "call_you_back_note",
-                None,
-                None,
-                PINGBASE_BOT,
-                None,
-                None,
-                None,
-                True,
-                storage_url,
-                organization,
+            event = Event.create_event_async(
+                event_type=event_type,
+                source_user_id=None,
+                destination_user_id=user.id,
+                status=SUCCESS,
+                duration=0,
+                frontend_screen="VoiceNote",
+                agent_name=None,
+                initiated_by=AUTOMATIC,
+                interaction_type=VOICE_NOTE,
+                interaction_id=callYouBackNote.id,
+                is_parent=True,
+                storage_url=storage_url,
+                organization=organization,
             )
         except Exception as e:
             logger.error(f"Error while creating call you back note event: {e}")
@@ -138,22 +135,20 @@ def send_voice_note(user_id, type):
 
         try:
             # create an out of office note event
-            out_of_office_note_event = Event.create_event_async(
-                "voice_note",
-                None,
-                user.id,
-                "completed",
-                None,
-                "out_of_office_note",
-                None,
-                None,
-                PINGBASE_BOT,
-                None,
-                None,
-                None,
-                True,
-                storage_url,
-                organization,
+            event = Event.create_event_async(
+                event_type=event_type,
+                source_user_id=None,
+                destination_user_id=user.id,
+                status=SUCCESS,
+                duration=0,
+                frontend_screen="VoiceNote",
+                agent_name=None,
+                initiated_by=AUTOMATIC,
+                interaction_type=VOICE_NOTE,
+                interaction_id=outOfOfficeNote.id,
+                is_parent=True,
+                storage_url=storage_url,
+                organization=organization,
             )
         except Exception as e:
             logger.error(f"Error while creating out of office note event: {e}")
