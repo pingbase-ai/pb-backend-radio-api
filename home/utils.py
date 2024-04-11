@@ -1,6 +1,12 @@
 from django.conf import settings
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from datetime import datetime
+from infra_utils.utils import encode_base64
+
+import requests
+import logging
+
+logger = logging.getLogger("django")
 
 
 def upload_to_azure_blob(file, prefix, blob_name) -> str:
@@ -53,3 +59,33 @@ def convert_to_date(date_str, type=None):
         return datetime_obj.strftime("%Y-%m-%d")
     else:
         return datetime_obj.strftime("%H:%M:%S")
+
+
+def fetch_session_id_from_dyte(meeting_id: str) -> str:
+    """
+    Fetches the session ID from Dyte for a given meeting ID.
+
+    :param meeting_id: Dyte meeting ID.
+    :return: Dyte session ID.
+    """
+    base_url = settings.DYTE_BASE_URL
+    api_key = settings.DYTE_API_KEY
+    org_id = settings.DYTE_ORG_ID
+    end_point = f"{base_url}/meetings/{meeting_id}/active-session"
+
+    encoded_token = encode_base64(f"{org_id}:{api_key}")
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Basic {encoded_token}",
+    }
+
+    try:
+        response = requests.get(end_point, headers=headers)
+        data = response.json()
+        logger.info("data", data)
+        session_id = data.get("data").get("id")
+        return session_id
+    except Exception as e:
+        logger.error(f"Error while fetching session ID from Dyte: {e}")
+        return ""

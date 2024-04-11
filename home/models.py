@@ -230,7 +230,6 @@ class EndUserLogin(CreatedModifiedModel):
     @staticmethod
     def create_login(end_user, organization):
         login = EndUserLogin(end_user=end_user, organization=organization)
-        login.save()
         return login
 
     @staticmethod

@@ -96,6 +96,12 @@ class EndUserSerializer(serializers.ModelSerializer):
     organization_name = serializers.CharField(
         write_only=True,
     )
+    is_trial = serializers.BooleanField(write_only=True)
+    role = serializers.CharField(write_only=True)
+    total_sessions = serializers.IntegerField(write_only=True)
+    trail_type = serializers.CharField(write_only=True)
+    priority = serializers.IntegerField(write_only=True)
+    company = serializers.CharField(write_only=True)
 
     class Meta:
         model = EndUser
@@ -109,6 +115,7 @@ class EndUserSerializer(serializers.ModelSerializer):
             "total_sessions",
             "trail_type",
             "priority",
+            "company",
         ]
 
     def create(self, validated_data):

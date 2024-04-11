@@ -11,7 +11,8 @@ logger = logging.getLogger("django")
 
 
 def send_voice_note(user_id, type):
-    endUser = EndUser.objects.get(id=user_id)
+    user = User.objects.get(id=user_id)
+    endUser = user.end_user
     organization = endUser.organization
 
     if type == "welcome_note":

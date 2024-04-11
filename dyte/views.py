@@ -257,32 +257,11 @@ class DyteWebhookView(CustomGenericAPIView):
             meetingInfo = data.get("meeting")
             meeting_id = meetingInfo.get("id")
             session_id = meetingInfo.get("sessionId")
-            organizedBy = meetingInfo.get("organizedBy")
-
-            if event == "meeting.started":
-
-                calEvent = (
-                    Call.objects.filter(
-                        Q(reciver__id=int(organizedBy.id))
-                        | Q(caller__id=int(organizedBy.id))
-                    )
-                    .filter(status="scheduled")
-                    .order_by("-created_at")
-                    .first()
-                )
-
-                calEvent.session_id = session_id
-
-                return Response(
-                    {"status": "success"},
-                    status=status.HTTP_200_OK,
-                )
-
             if event == "meeting.ended":
-
+                # {'event': 'meeting.ended', 'meeting': {'id': 'bbbc3e70-0b5f-43da-bb20-680c11ee2495', 'sessionId': '51d3062f-63eb-487d-ba6f-f463ccf7e234', 'title': 'Self - End user', 'status': 'LIVE', 'createdAt': '2024-04-10T08:55:36.514Z', 'startedAt': '2024-04-10T08:55:36.514Z', 'endedAt': '2024-04-10T08:56:44.887Z', 'organizedBy': {'id': 'c61c65d0-8c01-4103-8797-7400fbb8d8b4', 'name': 'Pingbaseai'}}, 'reason': 'ALL_PARTICIPANTS_LEFT'}
                 calEvent = Call.objects.filter(session_id=session_id).first()
                 calEvent.status = "completed"
-                calEvent.event_type = ANSWERED_OUR_CALL
+                # calEvent.event_type = ANSWERED_OUR_CALL
                 calEvent.save()
 
                 return Response(
@@ -312,7 +291,6 @@ class DyteWebhookView(CustomGenericAPIView):
                         {"status": "success"},
                         status=status.HTTP_200_OK,
                     )
-
             else:
                 logger.info(f"Event: {event} not handled yet")
                 return Response(

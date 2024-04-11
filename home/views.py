@@ -15,7 +15,7 @@ from .serializers import (
 )
 from .models import Meeting, Call, VoiceNote, EndUserLogin
 from user.models import Client, User, EndUser
-from .utils import upload_to_azure_blob
+from .utils import upload_to_azure_blob, fetch_session_id_from_dyte
 from user.utils import is_request_within_office_hours
 from django.db.models import Q
 from rest_framework.parsers import FileUploadParser
@@ -554,6 +554,7 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
                 "company": f"{sender.end_user.company}",
                 "timestamp": str(voice_note.created_at),
                 "unique_id": f"{sender.id}",
+                "role": f"{sender.end_user.role}",
             }
             try:
                 publish_event_to_client(
@@ -780,9 +781,13 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                 call.mark_as_seen(user)
             elif update_type == "call_accepted":
                 call.event_type = ANSWERED_OUR_CALL
+                # fetch the session_id from dyte for this call object
+                session_id = fetch_session_id_from_dyte(
+                    call.receiver.end_user.dyte_meeting.meeting_id
+                )
+                call.session_id = session_id
                 call.save()
                 # Create a new event type for this update
-
                 agent_name = None
                 if call.is_parent:
                     agent_name = call.caller.first_name
@@ -816,6 +821,10 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
 
             elif update_type == "we_accepted_the_call":
                 call.event_type = CALLED_US
+                session_id = fetch_session_id_from_dyte(
+                    call.caller.end_user.dyte_meeting.meeting_id
+                )
+                call.session_id = session_id
                 call.save()
                 # Create a new event type for this update
 
@@ -860,6 +869,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         "company": f"{call.caller.end_user.company}",
                         "timestamp": str(call.created_at),
                         "unique_id": f"{call.caller.id}",
+                        "role": f"{call.caller.end_user.role}",
                     }
                     publish_event_to_client(
                         str(organization.token),
@@ -986,6 +996,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                 "company": f"{caller.end_user.company}",
                 "timestamp": str(call.created_at),
                 "unique_id": f"{caller.id}",
+                "role": f"{caller.end_user.role}",
             }
             try:
                 publish_event_to_client(
@@ -1096,6 +1107,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     "company": f"{call.caller.end_user.company}",
                     "timestamp": str(timezone.now()),
                     "unique_id": f"{call.caller.id}",
+                    "role": f"{call.caller.end_user.role}",
                 }
             try:
                 publish_event_to_client(

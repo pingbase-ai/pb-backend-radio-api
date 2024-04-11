@@ -60,6 +60,7 @@ def create_login_event(sender, instance, created, **kwargs):
                 "sender": f"{str(userObj.first_name)} {str(userObj.last_name)}",
                 "company": f"{instance.end_user.company}",
                 "timestamp": str(event.created_at),
+                "role": f"{instance.end_user.role}",
             }
             try:
                 publish_event_to_client(
@@ -232,6 +233,7 @@ def create_meeting_event(sender, instance, created, **kwargs):
                 "company": f"{instance.end_user.company}",
                 "timestamp": str(event.created_at),
                 "scheduled_time": str(instance.start_time),
+                "role": f"{instance.end_user.role}",
             }
             try:
                 publish_event_to_client(
