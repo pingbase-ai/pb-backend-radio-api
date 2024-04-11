@@ -698,6 +698,7 @@ class OnboardingView(CustomAPIView):
             if widgetObj:
                 widgetObj.avatar = data.get("avatar")
                 widgetObj.position = data.get("position")
+                widgetObj.is_active = data.get("is_active", True)
                 widgetObj.save()
                 return Response(
                     {"message": "Widget updated"}, status=status.HTTP_200_OK
