@@ -57,7 +57,7 @@ def send_voice_note(user_id, type):
                 publish_event_to_user(
                     organization.token,
                     "private",
-                    encode_base64(f"{endUser.id}"),
+                    encode_base64(f"{user.id}"),
                     "client-event",
                     pusher_data_obj,
                 )
@@ -106,7 +106,7 @@ def send_voice_note(user_id, type):
             publish_event_to_user(
                 organization.token,
                 "private",
-                encode_base64(f"{endUser.id}"),
+                encode_base64(f"{user.id}"),
                 "client-event",
                 pusher_data_obj,
             )
@@ -152,7 +152,7 @@ def send_voice_note(user_id, type):
             publish_event_to_user(
                 organization.token,
                 "private",
-                encode_base64(f"{endUser.id}"),
+                encode_base64(f"{user.id}"),
                 "client-event",
                 pusher_data_obj,
             )
