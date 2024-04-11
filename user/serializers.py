@@ -96,11 +96,8 @@ class EndUserSerializer(serializers.ModelSerializer):
     organization_name = serializers.CharField(
         write_only=True,
     )
-    is_trial = serializers.BooleanField(write_only=True)
     role = serializers.CharField(write_only=True)
-    total_sessions = serializers.IntegerField(write_only=True)
     trail_type = serializers.CharField(write_only=True)
-    priority = serializers.IntegerField(write_only=True)
     company = serializers.CharField(write_only=True)
 
     class Meta:
@@ -110,11 +107,8 @@ class EndUserSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "organization_name",
-            "is_trial",
             "role",
-            "total_sessions",
             "trail_type",
-            "priority",
             "company",
         ]
 

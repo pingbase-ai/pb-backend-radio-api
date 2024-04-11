@@ -10,6 +10,7 @@ from home.models import Call
 from django.db.models import Q
 from home.event_types import ANSWERED_OUR_CALL
 from django.conf import settings
+from events.models import Event
 import logging
 
 logger = logging.getLogger("django")
@@ -282,6 +283,16 @@ class DyteWebhookView(CustomGenericAPIView):
                     calEvent = Call.objects.filter(session_id=session_id).first()
                     calEvent.file_url = uploaded_url
                     calEvent.save()
+
+                    # update the event with this uploaded_url
+
+                    event = Event.objects.filter(
+                        interaction_id=calEvent.call_id
+                    ).first()
+                    if event:
+                        event.storage_url = uploaded_url
+                        event.save()
+
                     return Response(
                         {"status": "success"},
                         status=status.HTTP_200_OK,
