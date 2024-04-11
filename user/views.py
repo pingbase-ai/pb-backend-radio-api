@@ -957,7 +957,7 @@ class CreateEndUserView(CustomGenericAPIView):
             return Response(
                 {
                     "message": "EndUser created successfully.",
-                    "end_user_id": end_user.user.id,
+                    "id": end_user.user.id,
                 },
                 status=status.HTTP_201_CREATED,
             )
