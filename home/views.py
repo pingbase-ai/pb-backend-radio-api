@@ -36,13 +36,14 @@ from infra_utils.utils import encode_base64, UUIDEncoder
 from dyte.models import DyteMeeting, DyteAuthToken
 from events.models import Event
 from user.serializers import CustomEndUserSerializer
-from .utils import convert_to_date
+from .utils import convert_to_date, convert_webm_to_mp3
 
 import logging
 import datetime
 import uuid
 import json
-
+import ffmpeg
+import os
 
 logger = logging.getLogger("django")
 
@@ -529,12 +530,38 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        audio_file_url = upload_to_azure_blob(
-            file,
-            f"voice-notes/{user.end_user.organization.name}",
-            f"voice_note_{uuid.uuid4()}.mp3",
-        )
-        logger.info(f"\n\n\n {audio_file_url} \n\n\n")
+        output_filename = f"{uuid.uuid4()}.mp3"
+        try:
+            output_filename = convert_webm_to_mp3(file, output_filename)
+        except Exception as e:
+            logger.error(f"Error while converting file: {e}")
+            return Response(
+                {"message": "Failed to convert file:"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        try:
+            audio_file_url = upload_to_azure_blob(
+                open(output_filename, "rb"),
+                f"voice-notes/{user.end_user.organization.name}",
+                f"voice_note_{uuid.uuid4()}.mp3",
+            )
+            logger.info(f"\n\n\n {audio_file_url} \n\n\n")
+        except Exception as e:
+            logger.error(f"Error while uploading file: {e}")
+            return Response(
+                {"message": "Failed to upload file:"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        try:
+            os.remove(output_filename)
+        except Exception as e:
+            logger.error(f"Error while deleting file: {e}")
+            return Response(
+                {"message": "Failed to delete file:"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         try:
             voice_note = VoiceNote.create_voice_note(

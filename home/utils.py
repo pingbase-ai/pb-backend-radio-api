@@ -5,6 +5,7 @@ from infra_utils.utils import encode_base64
 
 import requests
 import logging
+import ffmpeg
 
 logger = logging.getLogger("django")
 
@@ -20,15 +21,6 @@ def upload_to_azure_blob(file, prefix, blob_name) -> str:
         account_url=f"https://{account_name}.blob.core.windows.net",
         credential=account_key,
     )
-
-    # Read the file in binary mode
-    # file_bytes = file.read()
-
-    # Define the content settings with the appropriate MIME type for .webm files
-    # content_settings = ContentSettings(
-    #     content_type="video/webm", content_disposition="inline"
-    # )
-
     # Create the blob from bytes
     blob_service_client.get_blob_client(
         container=container_name, blob=full_blob_name
@@ -89,3 +81,34 @@ def fetch_session_id_from_dyte(meeting_id: str) -> str:
     except Exception as e:
         logger.error(f"Error while fetching session ID from Dyte: {e}")
         return ""
+
+
+def convert_webm_to_mp3(input_file, output_filename):
+    """
+    Converts a WebM file to MP3 using ffmpeg-python.
+    Reads from an input file object and writes the result to a specified output file.
+    """
+    try:
+        # Setup input stream from the file buffer
+        input_stream = ffmpeg.input("pipe:0", format="webm")
+
+        # Setup output stream to save the file directly
+        output_stream = ffmpeg.output(input_stream, "pipe:1", format="mp3")
+
+        # Process the streams
+        process = (
+            ffmpeg.input("pipe:0", format="webm")
+            .output("pipe:1", format="mp3")
+            .run_async(pipe_stdin=True, pipe_stdout=True, pipe_stderr=True)
+        )
+
+        # Send input file data and receive output file data
+        output, _ = process.communicate(input=input_file.read())
+
+        # Write the output to the specified file
+        with open(output_filename, "wb") as f:
+            f.write(output)
+        return output_filename
+    except ffmpeg.Error as e:
+        logger.error(f"An error occurred: {e.stderr}")
+        raise e
