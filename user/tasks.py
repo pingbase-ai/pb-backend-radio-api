@@ -1,6 +1,6 @@
 from pusher import Pusher
 from .models import User, EndUser, Organization
-from pusher_channel_app.utils import publish_event_to_user
+from pusher_channel_app.utils import publish_event_to_user, publish_event_to_channel
 from .constants import PINGBASE_BOT
 from infra_utils.utils import encode_base64
 from events.models import Event
@@ -71,6 +71,16 @@ def send_voice_note(user_id, type):
             except Exception as e:
                 logger.error(f"Error while sending welcome note: {e}")
 
+            try:
+                publish_event_to_channel(
+                    organization.token,
+                    "private",
+                    "client-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(f"Error while sending welcome note to channel: {e}")
+
     elif type == "call_you_back_note":
         callYouBackNote = organization.call_you_back_note
         storage_url = callYouBackNote.storage_url
@@ -120,6 +130,16 @@ def send_voice_note(user_id, type):
             )
         except Exception as e:
             logger.error(f"Error while sending call you back note: {e}")
+
+        try:
+            publish_event_to_channel(
+                organization.token,
+                "private",
+                "client-event",
+                pusher_data_obj,
+            )
+        except Exception as e:
+            logger.error(f"Error while sending call you back note: {e}")
     elif type == "out_of_office_note":
         outOfOfficeNote = organization.out_of_office_note
         storage_url = outOfOfficeNote.storage_url
@@ -164,6 +184,16 @@ def send_voice_note(user_id, type):
                 organization.token,
                 "private",
                 encode_base64(f"{user.id}"),
+                "client-event",
+                pusher_data_obj,
+            )
+        except Exception as e:
+            logger.error(f"Error while sending out of office note: {e}")
+
+        try:
+            publish_event_to_channel(
+                organization.token,
+                "private",
                 "client-event",
                 pusher_data_obj,
             )

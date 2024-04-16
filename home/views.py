@@ -31,7 +31,11 @@ from .event_types import (
     CALLED_US,
     MISSED_THEIR_CALL,
 )
-from pusher_channel_app.utils import publish_event_to_client, publish_event_to_user
+from pusher_channel_app.utils import (
+    publish_event_to_client,
+    publish_event_to_user,
+    publish_event_to_channel,
+)
 from infra_utils.utils import encode_base64, UUIDEncoder
 from dyte.models import DyteMeeting, DyteAuthToken
 from events.models import Event
@@ -445,6 +449,18 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
                 )
             except Exception as e:
                 logger.error(f"Error while publishing voice note created event: {e}")
+
+            try:
+                publish_event_to_channel(
+                    user.client.organization.token,
+                    "private",
+                    "client-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error while publishing voice note created event to channel: {e}"
+                )
         except Exception as e:
             logger.error(f"Error while creating voice note: {e}")
             return Response(
@@ -745,6 +761,17 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
             except Exception as e:
                 logger.error(f"Error while publishing call scheduled event: {e}")
 
+            try:
+                publish_event_to_channel(
+                    str(organization.token),
+                    "private",
+                    "client-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error while publishing call scheduled event to channel: {e}"
+                )
             return Response(
                 {
                     "message": "Call scheduled",
@@ -938,6 +965,18 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                     )
                 except Exception as e:
                     logger.error(f"Error while publishing call scheduled event: {e}")
+
+                try:
+                    publish_event_to_channel(
+                        str(user.client.organization.token),
+                        "private",
+                        "client-event",
+                        pusher_data_obj,
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Error while publishing call scheduled event to channel: {e}"
+                    )
                 try:
                     organization = call.organization
                     existingEvent = Event.objects.filter(interaction_id=call.call_id)
