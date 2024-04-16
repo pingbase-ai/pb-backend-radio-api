@@ -828,12 +828,14 @@ class OnboardingView(CustomAPIView):
         elif type == "share_code_instructions":
             email = data.get("email")
 
-            message = f"Your colleague, {user.first_name + ' ' + user.last_name}, has signed up for PingBase. The final step in order to go live is to drop these snippets of code into your product."
+            message = f"Your colleague, {user.first_name + ' ' + user.last_name}, has signed up for PingBase. The final step requires your help."
+            sub_message = f"PingBase is a launcher that sits within your product, similar to a chatbot launcher. To go live, please drop the 2 snippets of code below into your product. Check out our <a href='https://docs.pingbase.ai/'>developer docs<a> for further assistance."
             html_email_body = (
                 f"Hi there,<br><br>"
                 f"{message}<br><br>"
+                f"{sub_message}<br><br>"
                 f"{get_integration_code_snippet(organization.token)} <br><br>"
-                f"For more help, check out our <a href='https://docs.pingbase.ai/'>developer docs<a>."
+                f"If you have any questions, just hit reply."
                 f"<br><br>Thanks,<br>Team PingBase<br>"
             )
             # email_body = "Hi " + user.email + message + verification_link
