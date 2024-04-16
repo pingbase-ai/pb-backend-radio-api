@@ -6,6 +6,7 @@ from infra_utils.utils import encode_base64
 from events.models import Event
 from home.event_types import WE_SENT_AUDIO_NOTE, SUCCESS, AUTOMATIC, VOICE_NOTE
 
+import uuid
 import logging
 
 
@@ -25,8 +26,10 @@ def send_voice_note(user_id, type):
             title = welcomeNote.title
             description = welcomeNote.description
 
+            unique_id = uuid.uuid4()
             try:
                 # create events for the voice note
+                # interaction_id should be unique here.
                 event = Event.create_event_async(
                     event_type=event_type,
                     source_user_id=None,
@@ -37,7 +40,7 @@ def send_voice_note(user_id, type):
                     agent_name=None,
                     initiated_by=AUTOMATIC,
                     interaction_type=VOICE_NOTE,
-                    interaction_id=welcomeNote.id,
+                    interaction_id=unique_id,
                     is_parent=True,
                     storage_url=storage_url,
                     organization=organization,
@@ -47,7 +50,7 @@ def send_voice_note(user_id, type):
 
             pusher_data_obj = {
                 "source_event_type": "voice_note",
-                "id": str(welcomeNote.id),
+                "id": str(unique_id),
                 "storage_url": storage_url,
                 "sender": PINGBASE_BOT,
                 "play_time": str(play_time),
@@ -75,9 +78,11 @@ def send_voice_note(user_id, type):
         title = callYouBackNote.title
         description = callYouBackNote.description
 
+        unique_id = uuid.uuid4()
+
         pusher_data_obj = {
             "source_event_type": "voice_note",
-            "id": str(callYouBackNote.id),
+            "id": str(unique_id),
             "storage_url": storage_url,
             "sender": PINGBASE_BOT,
             "play_time": str(play_time),
@@ -98,7 +103,7 @@ def send_voice_note(user_id, type):
                 agent_name=None,
                 initiated_by=AUTOMATIC,
                 interaction_type=VOICE_NOTE,
-                interaction_id=callYouBackNote.id,
+                interaction_id=unique_id,
                 is_parent=True,
                 storage_url=storage_url,
                 organization=organization,
@@ -122,9 +127,11 @@ def send_voice_note(user_id, type):
         title = outOfOfficeNote.title
         description = outOfOfficeNote.description
 
+        unique_id = uuid.uuid4()
+
         pusher_data_obj = {
             "source_event_type": "voice_note",
-            "id": str(outOfOfficeNote.id),
+            "id": str(unique_id),
             "storage_url": storage_url,
             "sender": PINGBASE_BOT,
             "play_time": str(play_time),
@@ -145,7 +152,7 @@ def send_voice_note(user_id, type):
                 agent_name=None,
                 initiated_by=AUTOMATIC,
                 interaction_type=VOICE_NOTE,
-                interaction_id=outOfOfficeNote.id,
+                interaction_id=unique_id,
                 is_parent=True,
                 storage_url=storage_url,
                 organization=organization,

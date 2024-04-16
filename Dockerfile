@@ -3,7 +3,7 @@ FROM --platform=linux/amd64 python:3.11-slim
 
 RUN apt-get update \
     && apt-get upgrade -y \
-    && apt-get install -y gcc default-libmysqlclient-dev pkg-config \
+    && apt-get install -y gcc default-libmysqlclient-dev pkg-config ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Set environment variables

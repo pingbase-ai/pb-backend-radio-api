@@ -56,7 +56,7 @@ from infra_utils.views import (
 from infra_utils.utils import password_rule_check, generate_strong_password
 from django.db.models import Q
 from django.shortcuts import redirect
-from .constants import integration_code_snippet
+from .constants import get_integration_code_snippet
 
 import logging
 import json
@@ -588,6 +588,22 @@ class ProfilePicView(CustomGenericAPIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    def delete(self, request):
+        user = request.user
+        try:
+            user.photo = None
+            user.save()
+            return Response(
+                {"message": "Profile picture deleted successfully"},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return Response(
+                {"message": "Something went wrong"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class OnboardingView(CustomAPIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -816,7 +832,7 @@ class OnboardingView(CustomAPIView):
             html_email_body = (
                 f"Hi there,<br><br>"
                 f"{message}<br><br>"
-                f"{integration_code_snippet} <br><br>"
+                f"{get_integration_code_snippet(organization.token)} <br><br>"
                 f"For more help, check out our <a href='https://docs.pingbase.ai/'>developer docs<a>."
                 f"<br><br>Thanks,<br>Team PingBase<br>"
             )
@@ -1339,7 +1355,9 @@ class EndUserList(CustomGenericAPIListView):
             if query:
                 search = query.lower()
                 filtered_users_ids = User.objects.filter(
-                    Q(first_name__icontains=search) | Q(last_name__icontains=search)
+                    Q(first_name__icontains=search)
+                    | Q(last_name__icontains=search)
+                    | Q(end_user__company__icontains=search)
                 ).values_list("id", flat=True)
 
                 end_users = client.organization.end_users.filter(
