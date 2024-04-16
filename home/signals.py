@@ -79,6 +79,7 @@ def create_login_event(sender, instance, created, **kwargs):
             logger.error(f"Error while creating login event: {e}")
 
         finally:
+            # check if the last login timestamp has a diff of 1 hour
             # TODO to add slack notification when a user tab becomes active
             # send notification to slack
             org = instance.organization
@@ -231,10 +232,10 @@ def create_meeting_event(sender, instance, created, **kwargs):
                 "source_event_type": "scheduled_meeting",
                 "id": str(event.id),
                 "sender": f"{str(userObj.first_name)} {str(userObj.last_name)}",
-                "company": f"{instance.end_user.company}",
+                "company": f"{instance.organizer.end_user.company}",
                 "timestamp": str(timezone.now()),
                 "scheduled_time": str(instance.start_time),
-                "role": f"{instance.end_user.role}",
+                "role": f"{instance.organizer.end_user.role}",
             }
             try:
                 publish_event_to_client(
