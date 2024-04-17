@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from .utils import Mail
+from .utils import Mail, remove_spaces_from_text
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import generics, status, views, permissions
 from django.conf import settings
@@ -572,7 +572,7 @@ class ProfilePicView(CustomGenericAPIView):
         try:
             stored_url = upload_to_azure_blob(
                 file,
-                f"profile-pics/{user.client.organization.name}",
+                f"profile-pics/{remove_spaces_from_text(user.client.organization.name)}",
                 f"{user.id}.{extension}",
             )
             user.photo = stored_url
