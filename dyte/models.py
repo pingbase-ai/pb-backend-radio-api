@@ -4,6 +4,7 @@ from django.conf import settings
 from infra_utils.utils import encode_base64
 from infra_utils.models import CreatedModifiedModel
 from .utils import GROUP_CALL_PARTICIPANT, GROUP_CALL_HOST
+from user.models import User
 
 
 import requests
@@ -173,6 +174,11 @@ class DyteAuthToken(CreatedModifiedModel):
             "preset_name": preset,
             "custom_participant_id": str(user_id),
         }
+
+        userObj = User.objects.filter(id=user_id).first()
+
+        if userObj:
+            data["picture"] = userObj.photo
 
         try:
 

@@ -749,6 +749,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                 "meeting_id": endUserMeetingId,
                 "sender": user.first_name,
                 "storage_url": "",
+                "photo": user.photo,
             }
             try:
                 publish_event_to_user(
