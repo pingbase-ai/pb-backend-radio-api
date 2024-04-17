@@ -266,6 +266,8 @@ class EventPublicAPIView(CustomGenericAPIView):
                     "enduser-event",
                     pusher_data_obj,
                 )
+            except Exception as e:
+                logger.error(f"Error while sending pusher event: {e}")
             return Response(
                 {"message": "Event marked as played"}, status=status.HTTP_200_OK
             )

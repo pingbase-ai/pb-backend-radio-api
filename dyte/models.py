@@ -223,8 +223,12 @@ class DyteAuthToken(CreatedModifiedModel):
             ).exists():
                 return cls.objects.get(client=client, meeting=meeting, is_parent=True)
         else:
-            if cls.objects.filter(end_user=end_user, meeting=meeting).exists():
-                return cls.objects.get(end_user=end_user, meeting=meeting)
+            if cls.objects.filter(
+                end_user=end_user, meeting=meeting, is_parent=False
+            ).exists():
+                return cls.objects.get(
+                    end_user=end_user, meeting=meeting, is_parent=False
+                )
 
         user_id = None
         name = None
