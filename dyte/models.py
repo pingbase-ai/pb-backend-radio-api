@@ -178,7 +178,8 @@ class DyteAuthToken(CreatedModifiedModel):
         userObj = User.objects.filter(id=user_id).first()
 
         if userObj:
-            data["picture"] = userObj.photo
+            if userObj.photo:
+                data["picture"] = userObj.photo
 
         try:
 
