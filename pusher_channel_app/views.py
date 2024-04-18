@@ -162,7 +162,7 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
                     if endUser:
                         organization = endUser.organization
 
-                if name == "member_added":
+                if name == "member_added" and "online" in channel.lower():
                     # create a new EndUserLogin instance if the last EndUserLogin instance timestamp diff is greater than 1 hour
                     if endUser:
 
@@ -184,10 +184,11 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
                             )
 
                     # set user status to active
-                    userObj.set_online_status(True)
+                    # userObj.set_online_status(True)
 
                 elif name == "member_removed":
-                    userObj.set_online_status(False)
+                    pass
+                    # userObj.set_online_status(False)
 
             return Response(
                 {"status": "success"},
