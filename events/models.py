@@ -102,6 +102,9 @@ class Event(models.Model):
     # enduser specific field
     is_played = models.BooleanField(default=False)
 
+    # meeting specifi field
+    scheduled_time = models.DateTimeField(blank=True, null=True)
+
     # create a string representation for the event model
     def __str__(self):
         return self.event_type
@@ -124,6 +127,7 @@ class Event(models.Model):
         is_parent=False,
         storage_url=None,
         organization=None,
+        scheduled_time=None,
     ):
         """
         Class method to create an Event instance.
@@ -154,6 +158,7 @@ class Event(models.Model):
             is_parent=is_parent,
             storage_url=storage_url,
             organization=organization,
+            scheduled_time=scheduled_time,
         )
         event.save()
         return event
@@ -175,6 +180,7 @@ class Event(models.Model):
         is_parent=False,
         storage_url=None,
         organization=None,
+        scheduled_time=None,
     ):
         """
         Static method to create an Event instance asynchronously.
@@ -206,5 +212,6 @@ class Event(models.Model):
             is_parent=is_parent,
             storage_url=storage_url,
             organization=organization,
+            scheduled_time=scheduled_time,
         )
         return task_id

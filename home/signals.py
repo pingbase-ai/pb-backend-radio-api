@@ -225,6 +225,7 @@ def create_meeting_event(sender, instance, created, **kwargs):
                 organization=organization,
                 request_meta=None,
                 error_stack_trace=None,
+                scheduled_time=instance.date,
             )
 
             userObj = instance.organizer

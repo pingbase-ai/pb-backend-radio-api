@@ -69,13 +69,17 @@ class TasksClientAPIView(CustomAPIView):
             )
         organization = client.organization
         # Retrieve Meeting, Call, and Voice Notes data for the client
-        meetings = Meeting.objects.filter(
-            organization=organization, attendees=user, status="scheduled"
+        meetings = Event.objects.filter(
+            event_type=CALL_SCHEDULED,
+            organization=organization,
+            scheduled_time__gte=timezone.now(),
         )
-        calls = Call.objects.filter(
-            organization=organization, is_seen=False, event_type=MISSED_THEIR_CALL
+        calls = Event.objects.filter(
+            organization=organization, is_unread=True, event_type=MISSED_THEIR_CALL
         )
-        voice_notes = VoiceNote.objects.filter(organization=organization, is_seen=False)
+        voice_notes = Event.objects.filter(
+            organization=organization, is_unread=True, event_type=SENT_US_AUDIO_NOTE
+        )
 
         # Return the serialized data as a response
         return Response(
