@@ -4,6 +4,7 @@ from django.conf import settings
 from infra_utils.utils import encode_base64
 from infra_utils.models import CreatedModifiedModel
 from .utils import GROUP_CALL_PARTICIPANT, GROUP_CALL_HOST
+from user.models import User
 
 
 import requests
@@ -174,6 +175,12 @@ class DyteAuthToken(CreatedModifiedModel):
             "custom_participant_id": str(user_id),
         }
 
+        userObj = User.objects.filter(id=user_id).first()
+
+        if userObj:
+            if userObj.photo:
+                data["picture"] = userObj.photo
+
         try:
 
             response = requests.post(end_point, json=data, headers=headers)
@@ -217,8 +224,12 @@ class DyteAuthToken(CreatedModifiedModel):
             ).exists():
                 return cls.objects.get(client=client, meeting=meeting, is_parent=True)
         else:
-            if cls.objects.filter(end_user=end_user, meeting=meeting).exists():
-                return cls.objects.get(end_user=end_user, meeting=meeting)
+            if cls.objects.filter(
+                end_user=end_user, meeting=meeting, is_parent=False
+            ).exists():
+                return cls.objects.get(
+                    end_user=end_user, meeting=meeting, is_parent=False
+                )
 
         user_id = None
         name = None

@@ -31,7 +31,11 @@ from .event_types import (
     CALLED_US,
     MISSED_THEIR_CALL,
 )
-from pusher_channel_app.utils import publish_event_to_client, publish_event_to_user
+from pusher_channel_app.utils import (
+    publish_event_to_client,
+    publish_event_to_user,
+    publish_event_to_channel,
+)
 from infra_utils.utils import encode_base64, UUIDEncoder
 from dyte.models import DyteMeeting, DyteAuthToken
 from events.models import Event
@@ -65,13 +69,17 @@ class TasksClientAPIView(CustomAPIView):
             )
         organization = client.organization
         # Retrieve Meeting, Call, and Voice Notes data for the client
-        meetings = Meeting.objects.filter(
-            organization=organization, attendees=user, status="scheduled"
+        meetings = Event.objects.filter(
+            event_type=CALL_SCHEDULED,
+            organization=organization,
+            scheduled_time__gte=timezone.now(),
         )
-        calls = Call.objects.filter(
-            organization=organization, is_seen=False, event_type=MISSED_THEIR_CALL
+        calls = Event.objects.filter(
+            organization=organization, is_unread=True, event_type=MISSED_THEIR_CALL
         )
-        voice_notes = VoiceNote.objects.filter(organization=organization, is_seen=False)
+        voice_notes = Event.objects.filter(
+            organization=organization, is_unread=True, event_type=SENT_US_AUDIO_NOTE
+        )
 
         # Return the serialized data as a response
         return Response(
@@ -445,6 +453,18 @@ class ActivitiesCreateVoiceNoteClientAPIView(CustomGenericAPIView):
                 )
             except Exception as e:
                 logger.error(f"Error while publishing voice note created event: {e}")
+
+            try:
+                publish_event_to_channel(
+                    user.client.organization.token,
+                    "private",
+                    "client-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error while publishing voice note created event to channel: {e}"
+                )
         except Exception as e:
             logger.error(f"Error while creating voice note: {e}")
             return Response(
@@ -733,6 +753,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                 "meeting_id": endUserMeetingId,
                 "sender": user.first_name,
                 "storage_url": "",
+                "photo": user.photo,
             }
             try:
                 publish_event_to_user(
@@ -745,6 +766,17 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
             except Exception as e:
                 logger.error(f"Error while publishing call scheduled event: {e}")
 
+            try:
+                publish_event_to_channel(
+                    str(organization.token),
+                    "private",
+                    "client-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error while publishing call scheduled event to channel: {e}"
+                )
             return Response(
                 {
                     "message": "Call scheduled",
@@ -822,7 +854,6 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                     agent_name = call.receiver.first_name if call.receiver else None
 
                 try:
-                    # TODO add logic, if interaction id is already present, don't create a new event
                     organization = call.organization
                     existingEvent = Event.objects.filter(
                         interaction_id=call.call_id
@@ -939,6 +970,18 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                     )
                 except Exception as e:
                     logger.error(f"Error while publishing call scheduled event: {e}")
+
+                try:
+                    publish_event_to_channel(
+                        str(user.client.organization.token),
+                        "private",
+                        "client-event",
+                        pusher_data_obj,
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Error while publishing call scheduled event to channel: {e}"
+                    )
                 try:
                     organization = call.organization
                     existingEvent = Event.objects.filter(interaction_id=call.call_id)
@@ -1146,39 +1189,39 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
             except Exception as e:
                 logger.error(f"Error while publishing missed call event: {e}")
 
-                # Create a new event type for this update
-                agent_name = None
-                if call.is_parent:
-                    agent_name = call.caller.first_name
-                else:
-                    agent_name = call.receiver.first_name if call.receiver else None
+            # Create a new event type for this update
+            agent_name = None
+            if call.is_parent:
+                agent_name = call.caller.first_name
+            else:
+                agent_name = call.receiver.first_name if call.receiver else None
 
-                try:
-                    # check if event with interaction_id already exists
-                    existingEvent = Event.objects.filter(
-                        interaction_id=call.call_id
-                    ).first()
-                    logger.info(f"\n\n\n existingEvent: {existingEvent} \n\n\n")
-                    if not existingEvent:
-                        event = Event.create_event_async(
-                            event_type=MISSED_THEIR_CALL,
-                            source_user_id=call.caller.id,
-                            destination_user_id=None,
-                            status=SUCCESS,
-                            duration=0,
-                            frontend_screen="NA",
-                            agent_name=agent_name,
-                            initiated_by=MANUAL,
-                            interaction_type=CALL,
-                            interaction_id=call.call_id,
-                            is_parent=call.is_parent,
-                            storage_url=call.file_url,
-                            organization=organization,
-                            error_stack_trace=None,
-                            request_meta=None,
-                        )
-                except Exception as e:
-                    logger.error(f"Error while creating call event: {e}")
+            try:
+                # check if event with interaction_id already exists
+                existingEvent = Event.objects.filter(
+                    interaction_id=call.call_id
+                ).first()
+                logger.info(f"\n\n\n existingEvent: {existingEvent} \n\n\n")
+                if not existingEvent:
+                    event = Event.create_event_async(
+                        event_type=MISSED_THEIR_CALL,
+                        source_user_id=call.caller.id,
+                        destination_user_id=None,
+                        status=SUCCESS,
+                        duration=0,
+                        frontend_screen="NA",
+                        agent_name=agent_name,
+                        initiated_by=MANUAL,
+                        interaction_type=CALL,
+                        interaction_id=call.call_id,
+                        is_parent=call.is_parent,
+                        storage_url=call.file_url,
+                        organization=organization,
+                        error_stack_trace=None,
+                        request_meta=None,
+                    )
+            except Exception as e:
+                logger.error(f"Error while creating call event: {e}")
 
         except Exception as e:
             logger.error(f"Error while updating call: {e}")

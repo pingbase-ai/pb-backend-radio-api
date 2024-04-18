@@ -13,6 +13,10 @@ logger = logging.getLogger("django")
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 
 
+def remove_spaces_from_text(text: str) -> str:
+    return text.replace(" ", "_")
+
+
 def send_email_task(subject, body, html_body, from_email, to_email):
     send_mail(
         subject,

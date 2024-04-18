@@ -138,6 +138,7 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
         #     body=data,
         # )
         webhook = request.data
+        processed_user_ids = set()
 
         if verified_request:
             for event in webhook["events"]:
@@ -147,6 +148,9 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
                 channel = event["channel"]
                 name = event["name"]
                 user_id = event["user_id"]
+                if user_id in processed_user_ids:
+                    continue
+                processed_user_ids.add(user_id)
 
                 userObj = User.objects.filter(id=user_id).first()
 

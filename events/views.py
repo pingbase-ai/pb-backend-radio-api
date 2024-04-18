@@ -8,7 +8,8 @@ from infra_utils.views import CustomGenericAPIView, CustomGenericAPIListView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.db.models import Q
 from user.models import Organization
-
+from infra_utils.utils import encode_base64
+from pusher_channel_app.utils import publish_event_to_user
 
 import logging
 
@@ -252,6 +253,21 @@ class EventPublicAPIView(CustomGenericAPIView):
                 )
             event.is_played = True
             event.save()
+            # send a pusher event
+            # publish the event to the enduser
+            pusher_data_obj = {
+                "source_event_type": "voice_note_played",
+            }
+            try:
+                publish_event_to_user(
+                    str(organizationObj.token),
+                    "private",
+                    encode_base64(f"{endUserId}"),
+                    "enduser-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(f"Error while sending pusher event: {e}")
             return Response(
                 {"message": "Event marked as played"}, status=status.HTTP_200_OK
             )

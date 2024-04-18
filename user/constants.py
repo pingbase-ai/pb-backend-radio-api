@@ -1,7 +1,7 @@
 def get_integration_code_snippet(token: str) -> str:
     integration_code_snippet = f"""
-    Please paste the following script tag at the very top of the <head> of your site, replacing [SCRIPT] and [/SCRIPT] with the appropriate tag brackets:
-    <br>
+    1) Paste the following script tag at the very top of the <head> of your site, replacing [SCRIPT] and [/SCRIPT] with the appropriate tag brackets:
+    <br><br>
     [SCRIPT] type="text/javascript" src="https://pub-97c89484d63d47cd8329552fff50e010.r2.dev/main.js" defer[/SCRIPT]
     <br><br>
     Install the @pingbase/connect package using npm or yarn:
@@ -12,8 +12,8 @@ def get_integration_code_snippet(token: str) -> str:
     <br>
     yarn install --save @pingbase/connect
     <br><br>
-    Add the following command in your code to initialise PingBase
-    <br>
+    2) Add the following command in your code to initialise PingBase
+    <br><br>
     import PingBase from '@pingbase/connect';
     <br><br>
     PingBase('initOrg', '{token}');

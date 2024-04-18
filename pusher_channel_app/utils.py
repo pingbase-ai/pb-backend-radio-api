@@ -115,6 +115,21 @@ def publish_event_to_user(
         logger.exception(f"Failed to publish event to user -- {str(e)}")
 
 
+def publish_event_to_channel(
+    channel_name: str,
+    channel_type: str,
+    event_type: str,
+    data: dict[str, str] = {},
+) -> None:
+    pusher_client = PusherClientSingleton.get_client()
+    channel = f"{channel_type}-{channel_name}"
+    try:
+        pusher_client.trigger(channel, event_type, data)
+
+    except Exception as e:
+        logger.exception(f"Failed to publish event to channel -- {str(e)}")
+
+
 def publish_event_to_client(
     channel_name: str,
     channel_type: str,
