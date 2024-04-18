@@ -57,6 +57,8 @@ from infra_utils.utils import password_rule_check, generate_strong_password
 from django.db.models import Q
 from django.shortcuts import redirect
 from .constants import get_integration_code_snippet
+from home.models import EndUserLogin
+from django.utils import timezone
 
 import logging
 import json
@@ -1031,6 +1033,26 @@ class InitEndUserView(generics.GenericAPIView):
                 {"message": "Something went wrong"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class ExitEndUserView(CustomGenericAPIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        endUserId = request.query_params.get("endUserId", None)
+        endUserLoginEvent = (
+            EndUserLogin.objects.filter(end_user=endUserId)
+            .order_by("-modified_at")
+            .first()
+        )
+        if endUserLoginEvent:
+            endUserLoginEvent.last_active = timezone.now()
+            endUserLoginEvent.save()
+
+        return Response(
+            {"message": "EndUser exit event recorded"},
+            status=status.HTTP_200_OK,
+        )
 
 
 class TeamRegistrationView(generics.GenericAPIView):

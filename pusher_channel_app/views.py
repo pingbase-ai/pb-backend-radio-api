@@ -168,11 +168,11 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
 
                         last_login = (
                             EndUserLogin.objects.filter(end_user=endUser)
-                            .order_by("-created_at")
+                            .order_by("-modified_at")
                             .first()
                         )
                         if not last_login or (
-                            (timezone.now() - last_login.created_at).total_seconds()
+                            (timezone.now() - last_login.last_active).total_seconds()
                             > 3600
                         ):
                             logger.info(

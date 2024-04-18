@@ -223,6 +223,7 @@ class EndUserLogin(CreatedModifiedModel):
     )
     event_type = models.CharField(max_length=255, default="Logged In")
     is_seen = models.BooleanField(default=False)
+    last_active = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.end_user} + {self.last_login}"
