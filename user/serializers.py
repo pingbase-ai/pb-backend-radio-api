@@ -7,6 +7,7 @@ from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from infra_utils.utils import password_rule_check
+from home.models import EndUserSession
 from .models import (
     EndUser,
     OfficeHours,
@@ -18,11 +19,13 @@ from .models import (
     Organization,
 )
 import datetime
+import logging
 
 # from .models import Customer
 
 
 User = get_user_model()
+logger = logging.getLogger("django")
 
 
 class CustomEndUserSerializer(serializers.ModelSerializer):
@@ -37,6 +40,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
     sessions = serializers.SerializerMethodField()
     trial_type = serializers.SerializerMethodField()
     linkedin = serializers.SerializerMethodField()
+    last_session_login = serializers.SerializerMethodField()
 
     def get_id(self, obj):
         return obj.user.id
@@ -63,7 +67,8 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
         return obj.company
 
     def get_sessions(self, obj):
-        return obj.total_sessions
+        total_sessions = EndUserSession.objects.filter(end_user=obj).count()
+        return total_sessions
 
     def get_trial_type(self, obj):
         return obj.trial_type
@@ -71,6 +76,20 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
     def get_linkedin(self, obj):
 
         return obj.linkedin
+
+    def get_last_session_login(self, obj):
+        try:
+            last_session = (
+                EndUserSession.objects.filter(end_user=obj)
+                .order_by("-modified_at")
+                .first()
+            )
+            if last_session:
+                return last_session.last_session_active
+            return None
+        except Exception as e:
+            logger.error(f"Error while fetching last session login: {e}")
+            return None
 
     class Meta:
         model = EndUser

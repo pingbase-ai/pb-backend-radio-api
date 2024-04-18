@@ -57,7 +57,7 @@ from infra_utils.utils import password_rule_check, generate_strong_password
 from django.db.models import Q
 from django.shortcuts import redirect
 from .constants import get_integration_code_snippet
-from home.models import EndUserLogin
+from home.models import EndUserLogin, EndUserSession
 from django.utils import timezone
 
 import logging
@@ -1042,14 +1042,14 @@ class ExitEndUserView(CustomGenericAPIView):
         endUserId = request.query_params.get("endUserId", None)
         try:
             endUser = User.objects.filter(id=endUserId).first().end_user
-            endUserLoginEvent = (
-                EndUserLogin.objects.filter(end_user=endUser)
+            endUserSessionEvent = (
+                EndUserSession.objects.filter(end_user=endUser)
                 .order_by("-modified_at")
                 .first()
             )
-            if endUserLoginEvent:
-                endUserLoginEvent.last_active = timezone.now()
-                endUserLoginEvent.save()
+            if endUserSessionEvent:
+                endUserSessionEvent.last_session_active = timezone.now()
+                endUserSessionEvent.save()
         except Exception as e:
             logger.error(f"Error: {e}")
             return Response(

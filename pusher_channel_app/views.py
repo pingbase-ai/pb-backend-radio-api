@@ -16,7 +16,7 @@ from infra_utils.views import CustomGenericAPIView, CustomAPIView
 
 from infra_utils.utils import decode_base64
 from django.conf import settings
-from home.models import EndUserLogin
+from home.models import EndUserLogin, EndUserSession
 from .constants import ENDUSER, CLIENT
 
 import logging
@@ -163,25 +163,35 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
                         organization = endUser.organization
 
                 if name == "member_added" and "online" in channel.lower():
-                    # create a new EndUserLogin instance if the last EndUserLogin instance timestamp diff is greater than 1 hour
+                    # create a new EndUserSession instance if the last EndUserLogin instance timestamp diff is greater than 1 hour
                     if endUser:
+                        # Creating a new EndUserSession instance
+                        try:
+                            last_login = (
+                                EndUserSession.objects.filter(end_user=endUser)
+                                .order_by("-modified_at")
+                                .first()
+                            )
+                            if not last_login or (
+                                (
+                                    timezone.now() - last_login.last_session_active
+                                ).total_seconds()
+                                > 3600
+                            ):
+                                logger.info(
+                                    f"\n\n\n creating login event for {endUser} \n\n\n"
+                                )
+                                # Create a new EndUserLogin instance
+                                async_id = EndUserSession.create_session_async(
+                                    endUser, organization
+                                )
+                        except Exception as e:
+                            logger.error(f"Error while creating session: {e}")
 
-                        last_login = (
-                            EndUserLogin.objects.filter(end_user=endUser)
-                            .order_by("-modified_at")
-                            .first()
+                        # create a new EndUserLogin instance
+                        async_id = EndUserLogin.create_login_async(
+                            endUser, organization
                         )
-                        if not last_login or (
-                            (timezone.now() - last_login.last_active).total_seconds()
-                            > 3600
-                        ):
-                            logger.info(
-                                f"\n\n\n creating login event for {endUser} \n\n\n"
-                            )
-                            # Create a new EndUserLogin instance
-                            async_id = EndUserLogin.create_login_async(
-                                endUser, organization
-                            )
 
                     # set user status to active
                     # userObj.set_online_status(True)
