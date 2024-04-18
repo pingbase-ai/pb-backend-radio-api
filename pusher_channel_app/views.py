@@ -140,6 +140,8 @@ class PusherChannelAppWebhookPresenceView(generics.GenericAPIView):
         webhook = request.data
         processed_user_ids = set()
 
+        logger.info(f"\n\n\n webhook_data: {webhook} \n\n\n")
+
         if verified_request:
             for event in webhook["events"]:
 
