@@ -223,6 +223,7 @@ class EndUserLogin(CreatedModifiedModel):
     )
     event_type = models.CharField(max_length=255, default="Logged In")
     is_seen = models.BooleanField(default=False)
+    last_active = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.end_user} + {self.last_login}"
@@ -237,4 +238,31 @@ class EndUserLogin(CreatedModifiedModel):
     def create_login_async(end_user, organization):
         task_id = async_task(EndUserLogin.create_login, end_user, organization)
 
+        return task_id
+
+
+class EndUserSession(CreatedModifiedModel):
+    session_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    end_user = models.ForeignKey(
+        EndUser, on_delete=models.CASCADE, related_name="sessions"
+    )
+    start_time = models.DateTimeField(auto_now_add=True)
+    end_time = models.DateTimeField(null=True, blank=True)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.DO_NOTHING, related_name="end_user_sessions"
+    )
+    last_session_active = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.end_user} + {self.start_time}"
+
+    @staticmethod
+    def create_session(end_user, organization):
+        session = EndUserSession(end_user=end_user, organization=organization)
+        session.save()
+        return session
+
+    @staticmethod
+    def create_session_async(end_user, organization):
+        task_id = async_task(EndUserSession.create_session, end_user, organization)
         return task_id
