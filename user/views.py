@@ -1040,14 +1040,22 @@ class ExitEndUserView(CustomGenericAPIView):
 
     def post(self, request, *args, **kwargs):
         endUserId = request.query_params.get("endUserId", None)
-        endUserLoginEvent = (
-            EndUserLogin.objects.filter(end_user=endUserId)
-            .order_by("-modified_at")
-            .first()
-        )
-        if endUserLoginEvent:
-            endUserLoginEvent.last_active = timezone.now()
-            endUserLoginEvent.save()
+        try:
+            endUser = User.objects.filter(id=endUserId).first().end_user
+            endUserLoginEvent = (
+                EndUserLogin.objects.filter(end_user=endUser)
+                .order_by("-modified_at")
+                .first()
+            )
+            if endUserLoginEvent:
+                endUserLoginEvent.last_active = timezone.now()
+                endUserLoginEvent.save()
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return Response(
+                {"message": "EndUser does not exist"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         return Response(
             {"message": "EndUser exit event recorded"},
