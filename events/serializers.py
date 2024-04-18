@@ -2,6 +2,11 @@ from rest_framework import serializers
 from .models import Event
 from user.models import User
 from user.serializers import CustomEndUserSerializer
+from home.models import EndUserSession
+
+import logging
+
+logger = logging.getLogger("django")
 
 
 class CustomEventSerializerV1(serializers.ModelSerializer):
@@ -28,6 +33,7 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
     enduser_is_online = serializers.SerializerMethodField()
     enduser_last_login = serializers.SerializerMethodField()
     enduser_email = serializers.SerializerMethodField()
+    enduser_last_session_login = serializers.SerializerMethodField()
 
     enduser_role = serializers.SerializerMethodField()
     enduser_company = serializers.SerializerMethodField()
@@ -121,6 +127,25 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             return User.objects.filter(id=obj.destination_user_id).first().last_login
         return User.objects.filter(id=obj.source_user_id).first().last_login
 
+    def get_enduser_last_session_login(self, obj):
+        user_id = None
+        if obj.is_parent:
+            user_id = obj.destination_user_id
+        else:
+            user_id = obj.source_user_id
+
+        try:
+            endUser = User.objects.filter(id=user_id).first().end_user
+            last_session = (
+                EndUserSession.objects.filter(end_user=endUser)
+                .order_by("-modified_at")
+                .first()
+            )
+            return last_session.last_session_active
+        except Exception as e:
+            logger.error(f"Error while fetching last session login: {e}")
+            return None
+
     def get_enduser_role(self, obj):
         if obj.is_parent:
             return User.objects.filter(id=obj.destination_user_id).first().end_user.role
@@ -204,6 +229,7 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             "enduser_last_name",
             "enduser_is_online",
             "enduser_last_login",
+            "enduser_last_session_login",
             "enduser_role",
             "enduser_email",
             "enduser_company",
