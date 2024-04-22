@@ -15,6 +15,8 @@ from corsheaders.defaults import default_headers
 from infra_utils.custom_logging import LOGGING as CUSTOM_LOGGING
 from dotenv import load_dotenv
 from datetime import timedelta
+
+import sentry_sdk
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -34,6 +36,17 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = ["*"]
+
+sentry_sdk.init(
+    dsn="https://15510bd5a562746a59eb19affd288394@o4507129951813632.ingest.us.sentry.io/4507129958432768",
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for performance monitoring.
+    traces_sample_rate=1.0,
+    # Set profiles_sample_rate to 1.0 to profile 100%
+    # of sampled transactions.
+    # We recommend adjusting this value in production.
+    profiles_sample_rate=1.0,
+)
 
 
 # Application definition
