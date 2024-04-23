@@ -285,3 +285,36 @@ class DyteAuthToken(CreatedModifiedModel):
         auth_token.save()
 
         return auth_token
+
+    @classmethod
+    def delete_dyte_auth_token(cls, user_id, meeting_id):
+        """
+        Delete the DyteAuthToken instance.
+
+        Args:
+            user_id (int): The ID of the user.
+            meeting_id (str): The ID of the meeting.
+
+        """
+        base_url = settings.DYTE_BASE_URL
+        api_key = settings.DYTE_API_KEY
+        org_id = settings.DYTE_ORG_ID
+
+        end_point = f"{base_url}/meetings/{meeting_id}/participants/{user_id}"
+
+        encoded_token = encode_base64(f"{org_id}:{api_key}")
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {encoded_token}",
+        }
+
+        try:
+            response = requests.delete(end_point, headers=headers)
+            logger.info(
+                f"Response: {response.json()} \n Status Code: {response.status_code} \n Reason: {response.reason} \n"
+            )
+        except Exception as e:
+            logger.error(f"Error while deleting Dyte auth token: {e}")
+
+        return None

@@ -200,6 +200,11 @@ class DyteAuthTokenView(CustomGenericAPIView):
 
             if not client_auth_token_obj:
                 # create a new token for the client
+                # before creating make sure all the client cache is deleted from dyte
+                try:
+                    DyteAuthToken.delete_dyte_auth_token(user.id, meeting_id)
+                except Exception as e:
+                    logger.error(f"Error while deleting Dyte auth token: {e}")
                 try:
                     client_auth_token_obj = DyteAuthToken.create_dyte_auth_token(
                         meeting,
