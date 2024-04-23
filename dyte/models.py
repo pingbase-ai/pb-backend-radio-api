@@ -118,6 +118,8 @@ class DyteAuthToken(CreatedModifiedModel):
 
     token = models.TextField()
 
+    auth_id = models.TextField()
+
     meeting = models.ForeignKey(
         DyteMeeting, on_delete=models.DO_NOTHING, related_name="auth_tokens"
     )
@@ -191,8 +193,9 @@ class DyteAuthToken(CreatedModifiedModel):
 
             data = response.json().get("data")
             token = data.get("token")
+            auth_id = data.get("id")
 
-            return token
+            return token, auth_id
 
         except Exception as e:
             logger.error(f"Error while creating Dyte auth token: {e}")
@@ -241,7 +244,7 @@ class DyteAuthToken(CreatedModifiedModel):
             user_id = end_user.user.id
             name = str(end_user.user.first_name).capitalize()
 
-        token = cls.get_auth_token(meeting.meeting_id, name, user_id, preset)
+        token, auth_id = cls.get_auth_token(meeting.meeting_id, name, user_id, preset)
 
         auth_token = cls(
             token=token,
@@ -250,6 +253,7 @@ class DyteAuthToken(CreatedModifiedModel):
             preset=preset,
             end_user=end_user,
             is_parent=is_parent,
+            auth_id=auth_id,
         )
         auth_token.save()
 
@@ -277,11 +281,12 @@ class DyteAuthToken(CreatedModifiedModel):
             user_id = auth_token.end_user.user.id
             name = str(auth_token.end_user.user.first_name).capitalize()
 
-        token = cls.get_auth_token(
+        token, auth_id = cls.get_auth_token(
             auth_token.meeting.meeting_id, name, user_id, auth_token.preset
         )
 
         auth_token.token = token
+        auth_token.auth_id = auth_id
         auth_token.save()
 
         return auth_token

@@ -740,10 +740,10 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
 
             if not clientAuthToken:
                 # remove the existing cache from dyte
-                try:
-                    DyteAuthToken.delete_dyte_auth_token(user.id, endUserMeetingId)
-                except Exception as e:
-                    logger.error(f"Error while deleting Dyte auth token: {e}")
+                # try:
+                #     DyteAuthToken.delete_dyte_auth_token(user.id, endUserMeetingId)
+                # except Exception as e:
+                #     logger.error(f"Error while deleting Dyte auth token: {e}")
                 clientAuthToken = DyteAuthToken.create_dyte_auth_token(
                     meeting=endUserMeetingObj,
                     is_parent=True,
