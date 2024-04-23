@@ -116,7 +116,7 @@ def check_photo_change(sender, instance, **kwargs):
                                 )
                             updated_auth_token_obj = (
                                 DyteAuthToken.update_dyte_auth_token(
-                                    client_auth_token_obj
+                                    client_auth_token_obj, instance.photo
                                 )
                             )
                         else:

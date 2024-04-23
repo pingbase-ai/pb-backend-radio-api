@@ -148,11 +148,13 @@ class DyteAuthToken(CreatedModifiedModel):
         return f"{self.end_user.organization.name}"
 
     @staticmethod
-    def get_auth_token(meeting_id, name, user_id, preset=GROUP_CALL_PARTICIPANT):
+    def get_auth_token(
+        meeting_id, name, user_id, preset=GROUP_CALL_PARTICIPANT, photo_url=None
+    ):
         """
         Class method to get the auth token.
 
-        :param client: The client for which the token is to be generated.
+        :param client: The client for which the token is to be generated
         :param is_parent: Whether the token is for the parent client.
         :param preset: The preset for the token.
         :return: The auth token.
@@ -182,6 +184,9 @@ class DyteAuthToken(CreatedModifiedModel):
         if userObj:
             if userObj.photo:
                 data["picture"] = userObj.photo
+
+        if photo_url:
+            data["picture"] = photo_url
 
         try:
 
@@ -260,7 +265,7 @@ class DyteAuthToken(CreatedModifiedModel):
         return auth_token
 
     @classmethod
-    def update_dyte_auth_token(cls, auth_token):
+    def update_dyte_auth_token(cls, auth_token, photo_url=None):
         """
         Update the DyteAuthToken instance with the latest token.
 
@@ -282,7 +287,7 @@ class DyteAuthToken(CreatedModifiedModel):
             name = str(auth_token.end_user.user.first_name).capitalize()
 
         token, auth_id = cls.get_auth_token(
-            auth_token.meeting.meeting_id, name, user_id, auth_token.preset
+            auth_token.meeting.meeting_id, name, user_id, auth_token.preset, photo_url
         )
 
         auth_token.token = token
