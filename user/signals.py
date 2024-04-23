@@ -105,6 +105,15 @@ def check_photo_change(sender, instance, **kwargs):
                             is_parent=True, client=client, meeting=meeting
                         ).first()
                         if client_auth_token_obj:
+                            # delete the old token from dyte servers
+                            try:
+                                DyteAuthToken.delete_dyte_auth_token(
+                                    instance.pk, meeting.meeting_id
+                                )
+                            except Exception as e:
+                                logger.error(
+                                    f"Error while deleting Dyte auth token from dyte servers"
+                                )
                             updated_auth_token_obj = (
                                 DyteAuthToken.update_dyte_auth_token(
                                     client_auth_token_obj
