@@ -91,10 +91,13 @@ def check_photo_change(sender, instance, **kwargs):
         )
         if old_photo != instance.photo:
             # now update the client photo in all the meetings.
-            logger.info(f"Detected photo change for user: {instance}")
+            logger.info(
+                f"Detected photo change for user: {instance} and new photo is {instance.photo}"
+            )
             client = instance.client
 
-            if client:
+            if client and instance.photo:
+                # TODO update the below logic to be more precise
                 meetings = DyteMeeting.objects.all()
                 for meeting in meetings:
                     try:
@@ -115,3 +118,10 @@ def check_photo_change(sender, instance, **kwargs):
                         logger.error(
                             f"Error while updating Dyte auth token for client: {e} for meeting: {meeting}"
                         )
+
+            elif not instance.photo:
+                logger.info(f"Photo removed for user: {instance}")
+                dyteAuthObjs = DyteAuthToken.objects.filter(
+                    is_parent=True, client=client
+                ).delete()
+                logger.info(f"Deleted Dyte auth tokens: {dyteAuthObjs}")

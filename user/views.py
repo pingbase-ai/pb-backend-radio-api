@@ -572,10 +572,11 @@ class ProfilePicView(CustomGenericAPIView):
         else:
             extension = "unknown"
         try:
+            timestamp = timezone.now().strftime("%Y%m%d%H%M%S")
             stored_url = upload_to_azure_blob(
                 file,
                 f"profile-pics/{remove_spaces_from_text(user.client.organization.name)}",
-                f"{user.id}.{extension}",
+                f"{user.id}_{timestamp}.{extension}",
             )
             user.photo = stored_url
             user.save()
