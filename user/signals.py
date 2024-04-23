@@ -101,9 +101,16 @@ def check_photo_change(sender, instance, **kwargs):
                         client_auth_token_obj = DyteAuthToken.objects.filter(
                             is_parent=True, client=client, meeting=meeting
                         ).first()
-                        updated_auth_token_obj = DyteAuthToken.update_dyte_auth_token(
-                            client_auth_token_obj
-                        )
+                        if client_auth_token_obj:
+                            updated_auth_token_obj = (
+                                DyteAuthToken.update_dyte_auth_token(
+                                    client_auth_token_obj
+                                )
+                            )
+                        else:
+                            logger.info(
+                                f"No Dyte auth token found for client: {client} and meeting: {meeting}"
+                            )
                     except Exception as e:
                         logger.error(
                             f"Error while updating Dyte auth token for client: {e} for meeting: {meeting}"
