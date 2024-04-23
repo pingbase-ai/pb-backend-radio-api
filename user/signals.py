@@ -138,11 +138,19 @@ def check_photo_change(sender, instance, **kwargs):
                         ).first()
                         if client_auth_token_obj:
                             try:
-                                DyteAuthToken.delete_dyte_auth_token(client_auth_token_obj.auth_id, meeting.meeting_id)
+                                DyteAuthToken.delete_dyte_auth_token(
+                                    client_auth_token_obj.auth_id, meeting.meeting_id
+                                )
                             except Exception as e:
-                                logger.error(f"Error while deleting Dyte auth token from dyte servers: {e}")
-                                
-                            dyteAuthObjs = DyteAuthToken.objects.filter(
-                                is_parent=True, client=client
-                            ).delete()
-                            logger.info(f"Deleted Dyte auth tokens: {dyteAuthObjs}")
+                                logger.error(
+                                    f"Error while deleting Dyte auth token from dyte servers: {e}"
+                                )
+
+                        dyteAuthObjs = DyteAuthToken.objects.filter(
+                            is_parent=True, client=client
+                        ).delete()
+                        logger.info(f"Deleted Dyte auth tokens: {dyteAuthObjs}")
+                    except Exception as e:
+                        logger.error(
+                            f"Error while updating Dyte auth token for client: {e} for meeting: {meeting}"
+                        )
