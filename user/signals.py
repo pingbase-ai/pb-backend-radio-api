@@ -1,8 +1,9 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+from django.db.models import F
 from dyte.models import DyteMeeting, DyteAuthToken
 from django.conf import settings
-from user.models import EndUser, Widget
+from user.models import EndUser, Widget, User
 from django_q.tasks import schedule
 from datetime import timedelta
 from django.utils import timezone
@@ -79,3 +80,31 @@ def widget_updated(sender, instance, created, **kwargs):
             )
         except Exception as e:
             logger.error(f"Error while sending notification to all widgets: {e}")
+
+
+@receiver(pre_save, sender=User)
+def check_photo_change(sender, instance, **kwargs):
+    if instance.pk:  # Check if the instance is not new
+        # Fetch the old data from the database
+        old_photo = (
+            User.objects.filter(pk=instance.pk).values_list("photo", flat=True).first()
+        )
+        if old_photo != instance.photo:
+            # now update the client photo in all the meetings.
+            logger.info(f"Detected photo change for user: {instance}")
+            client = instance.client
+
+            if client:
+                meetings = DyteMeeting.objects.all()
+                for meeting in meetings:
+                    try:
+                        client_auth_token_obj = DyteAuthToken.objects.filter(
+                            is_parent=True, client=client, meeting=meeting
+                        ).first()
+                        updated_auth_token_obj = DyteAuthToken.update_dyte_auth_token(
+                            client_auth_token_obj
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Error while updating Dyte auth token for client: {e} for meeting: {meeting}"
+                        )

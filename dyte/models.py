@@ -254,3 +254,34 @@ class DyteAuthToken(CreatedModifiedModel):
         auth_token.save()
 
         return auth_token
+
+    @classmethod
+    def update_dyte_auth_token(cls, auth_token):
+        """
+        Update the DyteAuthToken instance with the latest token.
+
+        Args:
+            auth_token (DyteAuthToken): The DyteAuthToken instance to be updated.
+
+        Returns:
+            DyteAuthToken: The updated DyteAuthToken instance.
+
+        """
+        user_id = None
+        name = None
+
+        if auth_token.is_parent:
+            user_id = auth_token.client.user.id
+            name = str(auth_token.client.user.first_name).capitalize()
+        else:
+            user_id = auth_token.end_user.user.id
+            name = str(auth_token.end_user.user.first_name).capitalize()
+
+        token = cls.get_auth_token(
+            auth_token.meeting.meeting_id, name, user_id, auth_token.preset
+        )
+
+        auth_token.token = token
+        auth_token.save()
+
+        return auth_token
