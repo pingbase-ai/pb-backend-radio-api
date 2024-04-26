@@ -42,11 +42,7 @@ class EndUserAdmin(ModelAdmin):
 
 @admin.register(Organization)
 class OrganizationAdmin(ModelAdmin):
-    list_display = (
-        "name",
-        "website",
-        "team_name",
-    )
+    list_display = ("name", "website", "team_name", "token")
 
 
 @admin.register(OfficeHours)
