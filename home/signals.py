@@ -24,6 +24,7 @@ from infra_utils.constants import WIDGET_LAUNCHER_VIEW
 import logging
 
 logger = logging.getLogger("django")
+analytics.write_key = settings.JUNE_API_KEY
 
 
 @receiver(post_save, sender=EndUserLogin)
