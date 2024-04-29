@@ -141,7 +141,9 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
                 .order_by("-modified_at")
                 .first()
             )
-            return last_session.last_session_active
+            if last_session:
+                return last_session.last_session_active
+            return None
         except Exception as e:
             logger.error(f"Error while fetching last session login: {e}")
             return None

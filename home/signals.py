@@ -310,7 +310,7 @@ def track_enduser_session(sender, instance, created, **kwargs):
                 event=WIDGET_LAUNCHER_VIEW,
                 properties={
                     "session_id": str(instance.session_id),
-                    "last_active": instance.last_active,
+                    "last_active": instance.last_session_active,
                 },
             )
         except Exception as e:
