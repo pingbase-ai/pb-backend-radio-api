@@ -1,12 +1,13 @@
-import random
-import string
 from typing import Dict
+from datetime import datetime
+from uuid import UUID
+
 import re
 import uuid
 import base64
-
+import random
+import string
 import json
-from uuid import UUID
 
 
 class UUIDEncoder(json.JSONEncoder):
@@ -48,3 +49,13 @@ def encode_base64(string: str) -> str:
     encoded_bytes = base64.b64encode(string.encode("utf-8"))
     encoded_string = encoded_bytes.decode("utf-8")
     return encoded_string
+
+
+def get_time_difference(A: str, B: str) -> float:
+    # Convert the ISO 8601 formatted strings to datetime objects
+    A_dt = datetime.fromisoformat(A.replace("Z", "+00:00"))
+    B_dt = datetime.fromisoformat(B.replace("Z", "+00:00"))
+
+    # Calculate the difference in time between B and A
+    time_difference = abs((B_dt - A_dt).total_seconds())
+    return time_difference
