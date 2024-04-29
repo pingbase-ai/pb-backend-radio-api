@@ -961,8 +961,15 @@ class CreateEndUserView(CustomGenericAPIView):
         # end_user = EndUser.objects.filter(email=request.data.get("email")).first()
 
         if user:
+            sessions = EndUserSession.objects.filter(
+                end_user=user.end_user, organization=organization
+            ).count()
             return Response(
-                {"id": user.id, "message": "EndUser already exists"},
+                {
+                    "id": user.id,
+                    "message": "EndUser already exists",
+                    "sessions": sessions,
+                },
                 status=status.HTTP_200_OK,
             )
         required_data = {
@@ -977,10 +984,13 @@ class CreateEndUserView(CustomGenericAPIView):
         serializer = EndUserSerializer(data=required_data)
         if serializer.is_valid():
             end_user = serializer.save()
+            # Create a new EndUserLogin instance
+            async_id = EndUserSession.create_session_async(end_user, organization)
             return Response(
                 {
                     "message": "EndUser created successfully.",
                     "id": end_user.user.id,
+                    "sessions": 1,
                 },
                 status=status.HTTP_201_CREATED,
             )
