@@ -313,7 +313,7 @@ class DyteWebhookView(CustomGenericAPIView):
                                                 "first_name": calEvent.receiver.first_name,
                                                 "last_name": calEvent.receiver.last_name,
                                             },
-                                            "length": f"{init_recorded_time}",
+                                            "length": f"{float(init_recorded_time)}",
                                         },
                                     },
                                 )
@@ -349,7 +349,7 @@ class DyteWebhookView(CustomGenericAPIView):
                                                 "first_name": calEvent.caller.first_name,
                                                 "last_name": calEvent.caller.last_name,
                                             },
-                                            "length": f"{init_recorded_time}",
+                                            "length": f"{float(init_recorded_time)}",
                                         },
                                     },
                                 )
