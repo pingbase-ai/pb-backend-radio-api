@@ -1299,11 +1299,12 @@ class RequestPasswordResetEmailView(CustomGenericAPIView):
             )
             absurl = "https://" + current_site + relativeLink
 
-            email_body = (
-                "Hello! \n Use the link below to reset your password \n" + absurl
+            html_email_body = (
+                f"Hello! \n" f"<a href='{absurl}'>Click Here To Reset Password</a> \n"
             )
             data = {
-                "email_body": email_body,
+                "html_email_body": html_email_body,
+                "email_body": None,
                 "to_email": user.email,
                 "email_subject": "Reset your password",
             }
