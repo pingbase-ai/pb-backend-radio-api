@@ -56,9 +56,15 @@ from infra_utils.views import (
 from infra_utils.utils import password_rule_check, generate_strong_password
 from django.db.models import Q
 from django.shortcuts import redirect
-from .constants import get_integration_code_snippet
+from .constants import (
+    get_integration_code_snippet,
+    get_new_app_signup_slack_block_template_part_1,
+    get_new_app_signup_slack_block_template_part_2,
+    get_new_app_signup_slack_block_template_part_3,
+)
 from home.models import EndUserLogin, EndUserSession
 from django.utils import timezone
+from user.tasks import send_slack_blocks_async
 
 import logging
 import json
@@ -267,6 +273,23 @@ class SignUpView(CustomGenericAPIView):
                         role="admin",
                     )
                     client.save()
+
+                # send a notification to slack
+                blocks = [
+                    *get_new_app_signup_slack_block_template_part_1(),
+                    *get_new_app_signup_slack_block_template_part_2(company, email),
+                    *get_new_app_signup_slack_block_template_part_3(),
+                ]
+                slack_hook = settings.SLACK_APP_SIGNUPS_WEBHOOK_URL
+
+                data = {
+                    "blocks": blocks,
+                    "slack_hook": slack_hook,
+                }
+                try:
+                    send_slack_blocks_async(data)
+                except Exception as e:
+                    logger.error(f"Error while sending slack notification from view: {e}")
 
                 return Response(user_data, status=status.HTTP_201_CREATED)
             except Exception as e:

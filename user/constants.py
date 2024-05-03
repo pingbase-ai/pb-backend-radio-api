@@ -24,3 +24,50 @@ def get_integration_code_snippet(token: str) -> str:
 
 
 PINGBASE_BOT = "Pingbase Bot"
+
+
+def get_new_app_signup_slack_block_template_part_1():
+    return (
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": ":tada: \t *New Signup \t:tada:*"},
+        },
+    )
+
+
+def get_new_app_signup_slack_block_template_part_2(company, email):
+    return (
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*Company:*\n{company}\n*Email:*\n{email}",
+            },
+            "accessory": {
+                "type": "image",
+                "image_url": "https://api.slack.com/img/blocks/bkb_template_images/approvalsNewDevice.png",
+                "alt_text": "computer thumbnail",
+            },
+        },
+    )
+
+
+def get_new_app_signup_slack_block_template_part_3():
+    return (
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Awesome :rose:",
+                        "emoji": True,
+                    },
+                    "style": "primary",
+                    "value": "click_me_123",
+                    "url": "https://api.pingbase.ai/admin/user/organization/",
+                },
+            ],
+        },
+    )
