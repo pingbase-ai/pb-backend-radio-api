@@ -759,6 +759,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                 "sender": user.first_name,
                 "storage_url": "",
                 "photo": user.photo,
+                "sender_id": user.id,
             }
             try:
                 publish_event_to_user(

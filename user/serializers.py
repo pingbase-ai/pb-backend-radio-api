@@ -17,6 +17,7 @@ from .models import (
     OutOfOfficeNote,
     Client,
     Organization,
+    FeatureFlagConnect,
 )
 import datetime
 import logging
@@ -537,3 +538,9 @@ class ClientMemberSerializer(serializers.ModelSerializer):
             "role",
             "lastLoginTimestamp",
         ]
+
+
+class FeatureFlagConnectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeatureFlagConnect
+        fields = ["feature_name", "enabled"]

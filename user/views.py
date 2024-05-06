@@ -47,6 +47,7 @@ from .serializers import (
     SetNewPasswordAdhocSerializer,
     ClientMemberSerializer,
     CustomEndUserSerializer,
+    FeatureFlagConnectSerializer,
 )
 from infra_utils.views import (
     CustomAPIView,
@@ -289,7 +290,9 @@ class SignUpView(CustomGenericAPIView):
                 try:
                     send_slack_blocks_async(data)
                 except Exception as e:
-                    logger.error(f"Error while sending slack notification from view: {e}")
+                    logger.error(
+                        f"Error while sending slack notification from view: {e}"
+                    )
 
                 return Response(user_data, status=status.HTTP_201_CREATED)
             except Exception as e:
@@ -1058,6 +1061,9 @@ class InitEndUserView(generics.GenericAPIView):
                         "avatar": widgetAvatarNumber,
                     },
                     "team_name": teamName,
+                    "features": FeatureFlagConnectSerializer(
+                        organization.feature_flags_connect.all(), many=True
+                    ).data,
                 },
                 status=status.HTTP_200_OK,
             )

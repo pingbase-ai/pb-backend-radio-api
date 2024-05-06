@@ -11,6 +11,7 @@ from .models import (
     CallYouBackNote,
     OutOfOfficeNote,
     Widget,
+    FeatureFlagConnect,
 )
 
 # Register your models here.
@@ -71,3 +72,8 @@ class OutOfOfficeNoteAdmin(ModelAdmin):
 @admin.register(Widget)
 class WidgetAdmin(ModelAdmin):
     list_display = ("organization", "position", "avatar")
+
+
+@admin.register(FeatureFlagConnect)
+class FeatureFlagAdmin(ModelAdmin):
+    list_display = ("feature_name", "enabled")

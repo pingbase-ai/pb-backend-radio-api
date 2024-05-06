@@ -393,3 +393,17 @@ class Widget(models.Model):
     avatar = models.CharField(max_length=50, choices=AVATAR_CHOICES)
     position = models.CharField(max_length=50, choices=POSITION_CHOICES)
     is_active = models.BooleanField(default=True)
+
+
+class FeatureFlagConnect(models.Model):
+    feature_name = models.CharField(max_length=100, unique=True)
+    enabled = models.BooleanField(default=False)
+    organization = models.ManyToManyField(
+        Organization,
+        blank=True,
+        help_text="Organizations for whom the feature is enabled",
+        related_name="feature_flags_connect",
+    )
+
+    def __str__(self):
+        return self.feature_name
