@@ -17,9 +17,10 @@ from home.event_types import (
 )
 from integrations.slack.utils import create_message_compact, Slack
 from integrations.slack.models import SlackOAuth
-from pusher_channel_app.utils import publish_event_to_client
+from pusher_channel_app.utils import publish_event_to_client, publish_event_to_user
 from june import analytics
 from infra_utils.constants import WIDGET_LAUNCHER_VIEW
+from infra_utils.utils import encode_base64
 
 import logging
 
@@ -241,6 +242,7 @@ def create_meeting_event(sender, instance, created, **kwargs):
                 "scheduled_time": str(instance.start_time),
                 "role": f"{instance.organizer.end_user.role}",
             }
+            # send also to endUser private channel
             try:
                 publish_event_to_client(
                     organization.token,
@@ -248,8 +250,23 @@ def create_meeting_event(sender, instance, created, **kwargs):
                     "enduser-event",
                     pusher_data_obj,
                 )
+
             except Exception as e:
-                logger.error(f"Error while publishing voice note created event: {e}")
+                logger.error(
+                    f"Error while sending pusher event for event scheduled to agent{e}"
+                )
+            try:
+                publish_event_to_user(
+                    organization.token,
+                    "private",
+                    encode_base64(f"{instance.organizer.end_user.user.id}"),
+                    "client-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error while sending pusher event for event scheduled to endUser{e}"
+                )
 
         except Exception as e:
             logger.error(f"Error while creating meeting event: {e}")
