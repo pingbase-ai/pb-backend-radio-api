@@ -7,7 +7,7 @@ from user.models import EndUser, Widget, User
 from django_q.tasks import schedule
 from datetime import timedelta
 from django.utils import timezone
-from .utils import get_linkedIn_url
+from .utils import LinkedIn
 from pusher_channel_app.utils import publish_event_to_client
 
 
@@ -56,10 +56,8 @@ def fetch_linkedIn_url(sender, instance, created, **kwargs):
         try:
             if not instance.linkedin:
                 email = instance.user.email
-                linkedInUrl = get_linkedIn_url(email)
-                if linkedInUrl:
-                    instance.linkedin = linkedInUrl
-                    instance.save()
+                # fetch the linkedIn URL ASYNC
+                LinkedIn.get_linkedIn_url_async(email)
         except Exception as e:
             logger.error(f"Error while fetching LinkedIn URL: {e}")
 
