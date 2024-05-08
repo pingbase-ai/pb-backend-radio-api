@@ -37,6 +37,7 @@ monotonic==1.6
 msal==1.28.0
 mysqlclient==2.2.4
 ndg-httpsclient==0.5.1
+newrelic==9.9.0
 oauthlib==3.2.2
 packaging==23.2
 proto-plus==1.23.0
