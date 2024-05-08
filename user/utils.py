@@ -68,8 +68,10 @@ def get_linkedIn_url(email: str) -> None:
         data = res.json()
         if "success" in data:
             try:
-                logger.info("data", data)
+                logger.info(f"data: {data} \n type: {type(data)}")
                 if isinstance(data, bool):
+                    return
+                if not data:
                     return
                 linkedin_url = data["person"]["linkedInUrl"]
                 endUser.linkedin = linkedin_url
