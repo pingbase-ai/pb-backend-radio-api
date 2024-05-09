@@ -68,11 +68,11 @@ def get_linkedIn_url(email: str) -> None:
         data = res.json()
         if "success" in data:
             try:
-                logger.info(f"data: {data} \n type: {type(data)}")
-                if isinstance(data, bool):
-                    return
                 if not data:
                     return
+                if not data["person"]:
+                    return
+
                 linkedin_url = data["person"]["linkedInUrl"]
                 endUser.linkedin = linkedin_url
                 endUser.save()
@@ -99,6 +99,8 @@ def get_linkedIn_url(email: str) -> None:
                     )
             except AttributeError:
                 logger.warning(f"No LinkedIn URL found for {email}")
+            except Exception as e:
+                logger.error(f"Error while fetching LinkedIn URL: {e}")
     except requests.exceptions.RequestException as e:
         logger.error(f"Error while fetching LinkedIn URL: {e}")
 
