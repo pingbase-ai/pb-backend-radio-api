@@ -178,6 +178,8 @@ class Event(models.Model):
             organization=organization,
             scheduled_time=scheduled_time,
         )
+        event.src_user_id = source_user_id
+        event.dest_user_id = destination_user_id
         event.save()
         return event
 
