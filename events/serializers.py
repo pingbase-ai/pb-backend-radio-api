@@ -95,9 +95,10 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
         return obj.timestamp
 
     def get_enduser_id(self, obj):
-        if obj.is_parent:
-            return obj.dest_user.id
-        return obj.src_user.id
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        if user:
+            return user.end_user.id
+        return None
 
     def get_enduser_first_name(self, obj):
         user = obj.dest_user if obj.is_parent else obj.src_user
