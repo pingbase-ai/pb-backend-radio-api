@@ -13,11 +13,21 @@ from .serializers import (
     VoiceNoteSerializer,
     EndUserLoginSerializer,
 )
-from .models import Meeting, Call, VoiceNote, EndUserLogin
+from .models import Meeting, Call, VoiceNote, EndUserLogin, EndUserSession
 from user.models import Client, User, EndUser
 from .utils import upload_to_azure_blob, fetch_session_id_from_dyte
 from user.utils import is_request_within_office_hours
-from django.db.models import Q
+from django.db.models import (
+    Q,
+    Case,
+    When,
+    Count,
+    IntegerField,
+    Prefetch,
+    OuterRef,
+    Subquery,
+    Max,
+)
 from rest_framework.parsers import FileUploadParser
 from .event_types import (
     CALL_SCHEDULED,
@@ -61,34 +71,28 @@ class TasksClientAPIView(CustomAPIView):
 
         user = request.user
 
-        client = Client.objects.filter(user=user).first()
-        if not client:
+        try:
+            client = Client.objects.get(user=user)
+        except Client.DoesNotExist:
             return Response(
                 {"message": "Client not found for the user"},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_404_NOT_FOUND,
             )
+
+        current_time = timezone.now()
         organization = client.organization
         # Retrieve Meeting, Call, and Voice Notes data for the client
-        meetings = Event.objects.filter(
-            event_type=CALL_SCHEDULED,
-            organization=organization,
-            scheduled_time__gte=timezone.now(),
+        events_stats = Event.objects.filter(organization=organization).aggregate(
+            meetings=Count(
+                "id",
+                filter=Q(event_type="CALL_SCHEDULED", scheduled_time__gte=current_time),
+            ),
+            calls=Count("id", filter=Q(event_type="MISSED_THEIR_CALL", is_unread=True)),
+            voice_notes=Count(
+                "id", filter=Q(event_type="SENT_US_AUDIO_NOTE", is_unread=True)
+            ),
         )
-        calls = Event.objects.filter(
-            organization=organization, is_unread=True, event_type=MISSED_THEIR_CALL
-        )
-        voice_notes = Event.objects.filter(
-            organization=organization, is_unread=True, event_type=SENT_US_AUDIO_NOTE
-        )
-
-        # Return the serialized data as a response
-        return Response(
-            {
-                "meetings": meetings.count(),
-                "calls": calls.count(),
-                "voice_notes": voice_notes.count(),
-            }
-        )
+        return Response(events_stats)
 
 
 class ActivitiesClientAPIView(CustomAPIView):
@@ -1256,8 +1260,24 @@ class EndUserListAPIView(CustomAPIView):
             end_users = EndUser.objects.filter(
                 organization=organization, user__is_online=True
             )
+        last_session_subquery = (
+            EndUserSession.objects.filter(end_user=OuterRef("pk"))
+            .order_by("-modified_at")
+            .values("last_session_active")[:1]
+        )
 
-        serialized_data = CustomEndUserSerializer(end_users, many=True)
+        queryset = (
+            end_users.select_related("user")
+            .prefetch_related(
+                Prefetch("sessions"),
+            )
+            .annotate(
+                last_session=Subquery(last_session_subquery),
+                total_sessions_count=Count("sessions"),
+            )
+        )
+
+        serialized_data = CustomEndUserSerializer(queryset, many=True)
         return Response(serialized_data.data, status=status.HTTP_200_OK)
 
 

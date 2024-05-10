@@ -68,8 +68,11 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
         return obj.company
 
     def get_sessions(self, obj):
-        total_sessions = EndUserSession.objects.filter(end_user=obj).count()
-        return total_sessions
+        try:
+            return obj.total_sessions_count
+        except Exception as e:
+            logger.error(f"Error while fetching total sessions: {e}")
+            return 0
 
     def get_trial_type(self, obj):
         return obj.trial_type
@@ -80,14 +83,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
 
     def get_last_session_login(self, obj):
         try:
-            last_session = (
-                EndUserSession.objects.filter(end_user=obj)
-                .order_by("-modified_at")
-                .first()
-            )
-            if last_session:
-                return last_session.last_session_active
-            return None
+            return obj.last_session
         except Exception as e:
             logger.error(f"Error while fetching last session login: {e}")
             return None

@@ -464,13 +464,20 @@ class InviteTeamateView(CustomGenericAPIView):
             except Exception as e:
                 logger.error(f"Error: {e}")
         else:
-            message = ". Hello, team player! You've been served an invite to join Pingbase—Yay! \nUse the link below to verify your email and get ready to rally. \nIf this serve surprises you and you weren’t expecting any account verification email, just let it bounce and ignore this message. \n"
-            email_body = "Hi " + user.email + message + verification_link
+            message = f"You've been served an invite to join Pingbase by {request.user.email}!"
+
+            html_email_body = (
+                f"Hi there,<br><br>"
+                f"{message}<br><br>"
+                f"Use the link below to verify your email and get started:"
+                f"<a href='{verification_link}'>Click here to get started</a>"
+                f"<br><br>Thanks,<br>Team PingBase<br>"
+            )
             data = {
-                "email_body": email_body,
+                "email_body": None,
                 "to_email": user.email,
-                "email_subject": "has invited you to PingBase,",
-                "html_email_body": None,
+                "email_subject": "You’ve been invited to PingBase",
+                "html_email_body": html_email_body,
             }
             try:
                 Mail.send_email(data)

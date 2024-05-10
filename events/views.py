@@ -10,6 +10,7 @@ from django.db.models import Q
 from user.models import Organization
 from infra_utils.utils import encode_base64
 from pusher_channel_app.utils import publish_event_to_user
+from .utils import optimize_event_queryset
 
 import logging
 
@@ -53,7 +54,8 @@ class EventListTypeAPIView(CustomGenericAPIListView):
             events = Event.objects.filter(
                 organization=organization,
             )
-            serializer = CustomEventSerializerV1(events, many=True)
+            optimized_queryset = optimize_event_queryset(events)
+            serializer = CustomEventSerializerV1(optimized_queryset, many=True)
             return Response(serializer.data)
         else:
             Response({"error": "Invalid type"}, status=status.HTTP_400_BAD_REQUEST)
