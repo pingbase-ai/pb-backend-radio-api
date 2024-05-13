@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     "integrations.google_oauth",
     "integrations.outlook",
     "integrations.caldotcom",
+    "health",
 ]
 
 MIDDLEWARE = [
