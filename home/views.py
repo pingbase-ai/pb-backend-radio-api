@@ -1262,7 +1262,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     "sender": f"{call.caller.first_name} {call.caller.last_name}",
                     "timestamp": str(timezone.now()),
                     "unique_id": f"{call.caller.id}",
-                    "call_id": call_id
+                    "call_id": call_id,
                 }
                 try:
                     publish_event_to_client(
@@ -1291,7 +1291,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                         event = Event.create_event_async(
                             event_type=DECLINED_CALL,
                             source_user_id=call.caller.id,
-                            destination_user_id=None,
+                            destination_user_id=call.receiver.id,
                             status=SUCCESS,
                             duration=0,
                             frontend_screen="NA",
