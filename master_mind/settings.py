@@ -35,6 +35,8 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
+VERSION = "0.0.148"
+
 ALLOWED_HOSTS = ["*"]
 
 sentry_sdk.init(

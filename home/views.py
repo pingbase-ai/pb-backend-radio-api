@@ -40,6 +40,7 @@ from .event_types import (
     SUCCESS,
     CALLED_US,
     MISSED_THEIR_CALL,
+    DECLINED_CALL,
 )
 from pusher_channel_app.utils import (
     publish_event_to_client,
@@ -63,6 +64,21 @@ logger = logging.getLogger("django")
 
 
 # Create your views here.
+
+
+class ChecklistClientAPIView(CustomAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        # profile photo, voice note, call a user
+        photo = bool(user.photo)
+        voice_note = VoiceNote.objects.filter(sender=user, is_parent=True).exists()
+        call = Call.objects.filter(caller=user, is_parent=True).exists()
+
+        return Response({"photo": photo, "voice_note": voice_note, "call": call})
+
+
 class TasksClientAPIView(CustomAPIView):
 
     permission_classes = [IsAuthenticated]
@@ -1189,50 +1205,109 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     "unique_id": f"{call.caller.id}",
                     "role": f"{call.caller.end_user.role}",
                 }
-            try:
-                publish_event_to_client(
-                    str(call.organization.token),
-                    "private",
-                    "enduser-event",
-                    pusher_data_obj,
-                )
-            except Exception as e:
-                logger.error(f"Error while publishing missed call event: {e}")
-
-            # Create a new event type for this update
-            agent_name = None
-            if call.is_parent:
-                agent_name = call.caller.first_name
-            else:
-                agent_name = call.receiver.first_name if call.receiver else None
-
-            try:
-                # check if event with interaction_id already exists
-                existingEvent = Event.objects.filter(
-                    interaction_id=call.call_id
-                ).first()
-                logger.info(f"\n\n\n existingEvent: {existingEvent} \n\n\n")
-                if not existingEvent:
-                    event = Event.create_event_async(
-                        event_type=MISSED_THEIR_CALL,
-                        source_user_id=call.caller.id,
-                        destination_user_id=None,
-                        status=SUCCESS,
-                        duration=0,
-                        frontend_screen="NA",
-                        agent_name=agent_name,
-                        initiated_by=MANUAL,
-                        interaction_type=CALL,
-                        interaction_id=call.call_id,
-                        is_parent=call.is_parent,
-                        storage_url=call.file_url,
-                        organization=organization,
-                        error_stack_trace=None,
-                        request_meta=None,
+                try:
+                    publish_event_to_client(
+                        str(call.organization.token),
+                        "private",
+                        "enduser-event",
+                        pusher_data_obj,
                     )
-            except Exception as e:
-                logger.error(f"Error while creating call event: {e}")
+                except Exception as e:
+                    logger.error(f"Error while publishing missed call event: {e}")
 
+                # Create a new event type for this update
+                agent_name = None
+                if call.is_parent:
+                    agent_name = call.caller.first_name
+                else:
+                    agent_name = call.receiver.first_name if call.receiver else None
+
+                try:
+                    # check if event with interaction_id already exists
+                    existingEvent = Event.objects.filter(
+                        interaction_id=call.call_id
+                    ).first()
+                    logger.info(f"\n\n\n existingEvent: {existingEvent} \n\n\n")
+                    if not existingEvent:
+                        event = Event.create_event_async(
+                            event_type=MISSED_THEIR_CALL,
+                            source_user_id=call.caller.id,
+                            destination_user_id=None,
+                            status=SUCCESS,
+                            duration=0,
+                            frontend_screen="NA",
+                            agent_name=agent_name,
+                            initiated_by=MANUAL,
+                            interaction_type=CALL,
+                            interaction_id=call.call_id,
+                            is_parent=call.is_parent,
+                            storage_url=call.file_url,
+                            organization=organization,
+                            error_stack_trace=None,
+                            request_meta=None,
+                        )
+                except Exception as e:
+                    logger.error(f"Error while creating call event: {e}")
+
+            elif update_type == "declined_call":
+                call.status = "declined"
+                call.event_type = DECLINED_CALL
+                call.save()
+
+                # send a notification to pusher
+                pusher_data_obj = {
+                    "source_event_type": "declined-call",
+                    "id": str(call.call_id),
+                    "storage_url": "",
+                    "sender": f"{call.caller.first_name} {call.caller.last_name}",
+                    "company": f"{call.caller.end_user.company}",
+                    "timestamp": str(timezone.now()),
+                    "unique_id": f"{call.caller.id}",
+                    "role": f"{call.caller.end_user.role}",
+                }
+                try:
+                    publish_event_to_client(
+                        str(call.organization.token),
+                        "private",
+                        "enduser-event",
+                        pusher_data_obj,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while publishing declined call event: {e}")
+
+                # Create a new event type for this update
+                agent_name = None
+                if call.is_parent:
+                    agent_name = call.caller.first_name
+                else:
+                    agent_name = call.receiver.first_name if call.receiver else None
+
+                try:
+                    # check if event with interaction_id already exists
+                    existingEvent = Event.objects.filter(
+                        interaction_id=call.call_id
+                    ).first()
+                    logger.info(f"\n\n\n existingEvent: {existingEvent} \n\n\n")
+                    if not existingEvent:
+                        event = Event.create_event_async(
+                            event_type=DECLINED_CALL,
+                            source_user_id=call.caller.id,
+                            destination_user_id=None,
+                            status=SUCCESS,
+                            duration=0,
+                            frontend_screen="NA",
+                            agent_name=agent_name,
+                            initiated_by=MANUAL,
+                            interaction_type=CALL,
+                            interaction_id=call.call_id,
+                            is_parent=call.is_parent,
+                            storage_url=call.file_url,
+                            organization=organization,
+                            error_stack_trace=None,
+                            request_meta=None,
+                        )
+                except Exception as e:
+                    logger.error(f"Error while creating call event: {e}")
         except Exception as e:
             logger.error(f"Error while updating call: {e}")
             return Response(
