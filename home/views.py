@@ -1263,7 +1263,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     "company": f"{call.caller.end_user.company}",
                     "timestamp": str(timezone.now()),
                     "unique_id": f"{call.caller.id}",
-                    "role": f"{call.caller.end_user.role}",
+                    "call_id": call_id
                 }
                 try:
                     publish_event_to_client(
