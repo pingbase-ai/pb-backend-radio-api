@@ -1260,7 +1260,6 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     "id": str(call.call_id),
                     "storage_url": "",
                     "sender": f"{call.caller.first_name} {call.caller.last_name}",
-                    "company": f"{call.caller.end_user.company}",
                     "timestamp": str(timezone.now()),
                     "unique_id": f"{call.caller.id}",
                     "call_id": call_id
