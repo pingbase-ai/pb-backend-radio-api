@@ -250,7 +250,7 @@ class EndUser(CreatedModifiedModel):
     city = models.CharField(max_length=200, null=True, blank=True)
     country = models.CharField(max_length=200, null=True, blank=True)
     welcome_note_sent = models.BooleanField(default=False)
-    is_new = models.BooleanField(default=True, blank=True, null=True)
+    is_new = models.BooleanField(default=False, blank=True, null=True)
 
     objects = EndUserManager()
 
