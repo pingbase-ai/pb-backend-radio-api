@@ -60,6 +60,7 @@ import json
 import ffmpeg
 import os
 
+
 logger = logging.getLogger("django")
 
 
@@ -1146,6 +1147,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
         endUserId = request.query_params.get("endUserId")
         call_id = request.data.get("call_id", None)
         update_type = request.data.get("update_type", None)
+        current_timestamp = timezone.now()
         if not call_id or not update_type:
             return Response(
                 {"message": "call_id or update_type not provided"},
@@ -1160,6 +1162,17 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
             )
         try:
             if update_type == "mark_as_missed":
+                is_request_within_office_hours_bool = is_request_within_office_hours(
+                    organization
+                )
+                # check if the enduser ended the call before 30 Seconds and is within office hours
+                if current_timestamp - call.created_at < datetime.timedelta(seconds=30):
+                    if is_request_within_office_hours_bool:
+                        return Response(
+                            {"message": f"Call {update_type} successfully"},
+                            status=status.HTTP_200_OK,
+                        )
+
                 call.status = "missed"
                 call.event_type = MISSED_THEIR_CALL
                 call.save()
@@ -1168,9 +1181,6 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     # send back a automated message to the endUser
                     # if the call has happend within office hours -> call_you_back_note
                     # if the call has happend outside office hours -> out_of_office_note
-                    is_request_within_office_hours_bool = (
-                        is_request_within_office_hours(organization)
-                    )
                     if is_request_within_office_hours_bool:
                         task_id = async_task(
                             "user.tasks.send_voice_note",

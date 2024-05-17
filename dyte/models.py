@@ -3,7 +3,7 @@ from user.models import Client, EndUser
 from django.conf import settings
 from infra_utils.utils import encode_base64
 from infra_utils.models import CreatedModifiedModel
-from .utils import GROUP_CALL_PARTICIPANT, GROUP_CALL_HOST
+from .utils import GROUP_CALL_PARTICIPANT, GROUP_CALL_HOST, replace_special_chars
 from user.models import User
 
 
@@ -55,7 +55,7 @@ class DyteMeeting(CreatedModifiedModel):
             "record_on_start": record_on_start,
             "recording_config": {
                 "max_seconds": 86400,  # 24 hours
-                "file_name_prefix": file_name_prefix,
+                "file_name_prefix": replace_special_chars(file_name_prefix),
             },
         }
 

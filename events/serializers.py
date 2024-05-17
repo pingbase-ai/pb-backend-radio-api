@@ -34,6 +34,7 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
     enduser_last_login = serializers.SerializerMethodField()
     enduser_email = serializers.SerializerMethodField()
     enduser_last_session_login = serializers.SerializerMethodField()
+    enduser_is_new = serializers.SerializerMethodField()
 
     enduser_role = serializers.SerializerMethodField()
     enduser_company = serializers.SerializerMethodField()
@@ -161,6 +162,14 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
 
     def get_is_unread(self, obj):
         return obj.is_unread
+
+    def get_enduser_is_new(self, obj):
+        try:
+            user = obj.dest_user if obj.is_parent else obj.src_user
+            return user.end_user.is_new if user else False
+        except Exception as e:
+            logger.error(f"Error while fetching is_new: {e}")
+            return False
 
     class Meta:
         model = Event

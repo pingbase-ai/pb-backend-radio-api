@@ -42,6 +42,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
     trial_type = serializers.SerializerMethodField()
     linkedin = serializers.SerializerMethodField()
     last_session_login = serializers.SerializerMethodField()
+    is_new = serializers.SerializerMethodField()
 
     def get_id(self, obj):
         return obj.user.id
@@ -88,6 +89,9 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
             logger.error(f"Error while fetching last session login: {e}")
             return None
 
+    def get_is_new(self, obj):
+        return obj.is_new
+
     class Meta:
         model = EndUser
         fields = [
@@ -116,6 +120,7 @@ class EndUserSerializer(serializers.ModelSerializer):
     role = serializers.CharField(write_only=True)
     trial_type = serializers.CharField(write_only=True)
     company = serializers.CharField(write_only=True)
+    is_new = serializers.BooleanField(write_only=True)
 
     class Meta:
         model = EndUser
@@ -127,6 +132,7 @@ class EndUserSerializer(serializers.ModelSerializer):
             "role",
             "trial_type",
             "company",
+            "is_new",
         ]
 
     def create(self, validated_data):

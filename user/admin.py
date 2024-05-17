@@ -77,3 +77,4 @@ class WidgetAdmin(ModelAdmin):
 @admin.register(FeatureFlagConnect)
 class FeatureFlagAdmin(ModelAdmin):
     list_display = ("feature_name", "enabled")
+    filter_horizontal = ("organization",)

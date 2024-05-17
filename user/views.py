@@ -66,6 +66,7 @@ from .constants import (
 from home.models import EndUserLogin, EndUserSession
 from django.utils import timezone
 from user.tasks import send_slack_blocks_async
+from dyte.utils import replace_special_chars
 
 import logging
 import json
@@ -221,7 +222,8 @@ class SignUpView(CustomGenericAPIView):
                     )
 
                 if not organization:
-                    organization = Organization.objects.create(name=company)
+                    final_company_name = replace_special_chars(company)
+                    organization = Organization.objects.create(name=final_company_name)
                     organization.save()
 
                 # create the user
@@ -993,15 +995,31 @@ class CreateEndUserView(CustomGenericAPIView):
 
         # end_user = EndUser.objects.filter(email=request.data.get("email")).first()
 
+        is_new = request.data.get("is_new")
         if user:
             sessions = EndUserSession.objects.filter(
                 end_user=user.end_user, organization=organization
             ).count()
+            endUser = user.end_user
+            is_new = request.data.get("is_new")
+
+            try:
+                endUser.first_name = request.data.get("first_name")
+                endUser.last_name = request.data.get("last_name")
+                endUser.role = request.data.get("role")
+                endUser.trial_type = request.data.get("trial_type")
+                endUser.company = request.data.get("company")
+                endUser.is_new = request.data.get("is_new")
+                endUser.save()
+            except Exception as e:
+                logger.error(f"Error while updating endUser details: {e}")
+
             return Response(
                 {
                     "id": user.id,
                     "message": "EndUser already exists",
                     "sessions": sessions,
+                    "is_new": endUser.is_new,
                 },
                 status=status.HTTP_200_OK,
             )
@@ -1013,6 +1031,7 @@ class CreateEndUserView(CustomGenericAPIView):
             "role": request.data.get("role"),
             "trial_type": request.data.get("trial_type"),
             "company": request.data.get("company"),
+            "is_new": request.data.get("is_new"),
         }
         serializer = EndUserSerializer(data=required_data)
         if serializer.is_valid():
@@ -1024,6 +1043,7 @@ class CreateEndUserView(CustomGenericAPIView):
                     "message": "EndUser created successfully.",
                     "id": end_user.user.id,
                     "sessions": 1,
+                    "is_new": end_user.is_new,
                 },
                 status=status.HTTP_201_CREATED,
             )
