@@ -107,6 +107,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
             "trial_type",
             "linkedin",
             "last_session_login",
+            "is_new",
         ]
 
 

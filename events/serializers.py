@@ -202,6 +202,7 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             "enduser_sessions",
             "enduser_trail_type",
             "enduser_linkedin",
+            "enduser_is_new",
             "storage_url",
             "is_seen_enduser",
             "is_played",
