@@ -1,3 +1,10 @@
+# Variable constants
+PINGBASE_BOT = "Pingbase Bot"
+BANNER_OOO_TEXT = "Your status has been automatically set to busy as the time is now outside of team office hours. To receive calls, change your status to active:"
+BANNER_OOO_HYPERLINK_TEXT = "Change"
+
+
+# Function constants
 def get_integration_code_snippet(token: str) -> str:
     integration_code_snippet = f"""
     1) Paste the following script tag at the very top of the <head> of your site, replacing [SCRIPT] and [/SCRIPT] with the appropriate tag brackets:
@@ -21,9 +28,6 @@ def get_integration_code_snippet(token: str) -> str:
     PingBase('initUser', 'email', 'firstName', 'lastName', 'trialType');
     """
     return integration_code_snippet
-
-
-PINGBASE_BOT = "Pingbase Bot"
 
 
 def get_new_app_signup_slack_block_template_part_1():

@@ -1,10 +1,13 @@
 from django.core.mail import send_mail
 from django.conf import settings
-from django_q.tasks import async_task
+from django_q.tasks import async_task, schedule
+from django_q.models import Schedule, OrmQ
 from django.utils import timezone
-from datetime import timedelta
-from user.models import User
+from datetime import timedelta, datetime, UTC
+from user.models import User, Organization
 from pusher_channel_app.utils import publish_event_to_client
+from functools import lru_cache
+
 
 import pytz
 import requests
@@ -13,6 +16,60 @@ import logging
 
 logger = logging.getLogger("django")
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
+
+
+@lru_cache(maxsize=1000)
+def get_local_time_from_utc(utc_time, timezone_str):
+    local_tz = pytz.timezone(timezone_str)
+    return utc_time.astimezone(local_tz)
+
+
+def is_office_open(office_hours, timezone_str):
+    current_utc_time = datetime.now(UTC).replace(tzinfo=pytz.utc)
+    current_local_time = get_local_time_from_utc(current_utc_time, timezone_str)
+
+    weekday = current_local_time.weekday() + 1  # Monday is 1 and Sunday is 7
+
+    if office_hours:
+        for office_hour in office_hours:
+            if office_hour.weekday == weekday:
+                if office_hour.is_open:
+                    open_time = current_local_time.replace(
+                        hour=office_hour.open_time.hour,
+                        minute=office_hour.open_time.minute,
+                        second=0,
+                        microsecond=0,
+                    )
+                    close_time = current_local_time.replace(
+                        hour=office_hour.close_time.hour,
+                        minute=office_hour.close_time.minute,
+                        second=0,
+                        microsecond=0,
+                    )
+                    return (
+                        open_time <= current_local_time <= close_time,
+                        open_time,
+                        close_time,
+                    )
+    return False, None, None
+
+
+def schedule_next_update(time_to_run, organization_id, action):
+    task_name = f"Update Banner Status {organization_id} {action}"
+    schedule(
+        "user.tasks.update_banner_status_for_organisation",
+        organization_id,
+        action,
+        name=task_name,
+        schedule_type="O",
+        next_run=time_to_run,
+    )
+
+
+def cancel_scheduled_tasks(organization_id):
+    Schedule.objects.filter(
+        name__startswith=f"Update Banner Status {organization_id}"
+    ).delete()
 
 
 def remove_spaces_from_text(text: str) -> str:
@@ -174,3 +231,70 @@ def is_request_within_office_hours(organization):
     )
 
     return open_time <= now_local < close_time
+
+
+def schedule_next_update_for_organization(organization):
+    office_hours = organization.office_hours.all()
+    if not office_hours or not organization.timezone:
+        return
+
+    is_open, open_time, close_time = is_office_open(office_hours, organization.timezone)
+    next_run = close_time if is_open else open_time
+
+    if next_run:
+        cancel_scheduled_tasks(organization.id)
+        action = "close" if is_open else "open"
+        schedule_next_update(next_run, organization.id, action)
+
+
+def update_banner_status_for_organisation(organization_id, action="close"):
+
+    task_name = f"Update Banner Status {organization_id} {action}"
+    if OrmQ.objects.filter(name=task_name, lock__isnull=False).exists():
+        logger.info(
+            f"Task for organization {organization_id} is already running. Skipping this run."
+        )
+        return
+
+    try:
+        organization = Organization.objects.prefetch_related("office_hours").get(
+            id=organization_id
+        )
+    except Organization.DoesNotExist:
+        logger.error(f"Organization {organization_id} does not exist.")
+        return
+
+    office_hours = organization.office_hours.all()
+    if not office_hours or not organization.timezone:
+        return
+
+    is_open, open_time, close_time = is_office_open(office_hours, organization.timezone)
+
+    banner = (
+        organization.client_banners.filter(banner_type="ooo")
+        .select_related("organization")
+        .first()
+    )
+
+    if banner:
+        if action == "close" and not is_open:
+            banner.is_active = True
+            next_run = open_time
+            next_action = "open"
+        elif action == "open" and is_open:
+            banner.is_active = False
+            next_run = close_time
+            next_action = "close"
+        else:
+            logger.info(
+                f"No action needed for organization {organization_id} with action {action}."
+            )
+            return
+
+        banner.save()
+        logger.info(
+            f'Updated banner status for organization {organization.name} to {"active" if banner.is_active else "inactive"}'
+        )
+
+        if next_run:
+            schedule_next_update(next_run, organization.id, next_action)

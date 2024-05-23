@@ -12,6 +12,7 @@ from .models import (
     OutOfOfficeNote,
     Widget,
     FeatureFlagConnect,
+    ClientBanner,
 )
 
 # Register your models here.
@@ -78,3 +79,8 @@ class WidgetAdmin(ModelAdmin):
 class FeatureFlagAdmin(ModelAdmin):
     list_display = ("feature_name", "enabled")
     filter_horizontal = ("organization",)
+
+
+@admin.register(ClientBanner)
+class ClientBannerAdmin(ModelAdmin):
+    list_display = ("organization", "banner", "is_active", "banner_type")

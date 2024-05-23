@@ -1,14 +1,15 @@
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 from django.db.models import F
 from dyte.models import DyteMeeting, DyteAuthToken
 from django.conf import settings
-from user.models import EndUser, Widget, User
+from user.models import EndUser, Widget, User, OfficeHours, ClientBanner
 from django_q.tasks import schedule
 from datetime import timedelta
 from django.utils import timezone
-from .utils import LinkedIn
+from .utils import LinkedIn, schedule_next_update_for_organization
 from pusher_channel_app.utils import publish_event_to_client
+from .constants import BANNER_OOO_TEXT, BANNER_OOO_HYPERLINK_TEXT
 
 
 import logging
@@ -151,3 +152,26 @@ def check_photo_change(sender, instance, **kwargs):
                     logger.error(
                         f"Error while updating Dyte auth token for client: {e} for meeting: {meeting}"
                     )
+
+
+@receiver(post_save, sender=OfficeHours)
+@receiver(post_delete, sender=OfficeHours)
+def handle_office_hours_update(sender, instance, created, **kwargs):
+    try:
+        pass
+        # if this is a new instance, create a new ClientBanner
+        if created:
+            try:
+                ClientBanner.objects.create(
+                    organization=instance.organization,
+                    banner=BANNER_OOO_TEXT,
+                    hyperlink=BANNER_OOO_HYPERLINK_TEXT,
+                    banner_type="ooo",
+                    is_active=False,
+                )
+            except Exception as e:
+                logger.error(f"Error while creating new ClientBanner: {e}")
+
+        schedule_next_update_for_organization(instance.organization)
+    except Exception as e:
+        logger.error(f"Error while scheduling office hours: {e}")

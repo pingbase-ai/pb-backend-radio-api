@@ -26,6 +26,9 @@ WEEKDAYS = [
     (7, ("Sunday")),
 ]
 
+# Banner types
+BANNER_TYPES = [("ooo", "OOO"), ("info", "INFO")]
+
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password, **extra_fields):
@@ -409,3 +412,16 @@ class FeatureFlagConnect(models.Model):
 
     def __str__(self):
         return self.feature_name
+
+
+class ClientBanner(CreatedModifiedModel):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="client_banners"
+    )
+    banner = models.TextField()
+    hyperlink = models.CharField(max_length=256)
+    is_active = models.BooleanField(default=True)
+    banner_type = models.CharField(max_length=50, choices=BANNER_TYPES, default="ooo")
+
+    def __str__(self):
+        return self.organization.name
