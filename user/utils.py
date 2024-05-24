@@ -273,7 +273,7 @@ def schedule_next_update_for_organization(organization):
 def update_banner_status_for_organisation(organization_id, action="close"):
 
     task_name = f"Update Banner Status {organization_id} {action}"
-    if Schedule.objects.filter(name=task_name, lock__isnull=False).exists():
+    if Schedule.objects.filter(name=task_name).exists():
         logger.info(
             f"Task for organization {organization_id} is already running. Skipping this run."
         )

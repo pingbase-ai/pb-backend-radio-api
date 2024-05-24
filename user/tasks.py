@@ -6,7 +6,7 @@ from infra_utils.utils import encode_base64
 from events.models import Event
 from home.event_types import WE_SENT_AUDIO_NOTE, SUCCESS, AUTOMATIC, VOICE_NOTE
 from django_q.tasks import async_task
-from .utils import update_banner_status_for_organisation
+from .utils import schedule_next_update_for_organization
 
 import uuid
 import logging
@@ -234,4 +234,4 @@ def send_slack_blocks_async(data):
 def update_banner_status():
     organizations = Organization.objects.all()
     for organization in organizations:
-        update_banner_status_for_organisation(organization)
+        schedule_next_update_for_organization(organization)
