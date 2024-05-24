@@ -10,7 +10,7 @@ from django.utils import timezone
 from .utils import LinkedIn, schedule_next_update_for_organization
 from pusher_channel_app.utils import publish_event_to_client
 from .constants import BANNER_OOO_TEXT, BANNER_OOO_HYPERLINK_TEXT
-
+from django.core.cache import cache
 
 import logging
 
@@ -158,20 +158,29 @@ def check_photo_change(sender, instance, **kwargs):
 @receiver(post_delete, sender=OfficeHours)
 def handle_office_hours_update(sender, instance, created, **kwargs):
     try:
-        pass
         # if this is a new instance, create a new ClientBanner
         if created:
             try:
-                ClientBanner.objects.create(
-                    organization=instance.organization,
-                    banner=BANNER_OOO_TEXT,
-                    hyperlink=BANNER_OOO_HYPERLINK_TEXT,
-                    banner_type="ooo",
-                    is_active=False,
-                )
+                # check if the organization already has an OOO banner
+
+                existing_banner = ClientBanner.objects.filter(
+                    organization=instance.organization, banner_type="ooo"
+                ).first()
+                if not existing_banner:
+                    ClientBanner.objects.create(
+                        organization=instance.organization,
+                        banner=BANNER_OOO_TEXT,
+                        hyperlink=BANNER_OOO_HYPERLINK_TEXT,
+                        banner_type="ooo",
+                        is_active=False,
+                    )
             except Exception as e:
                 logger.error(f"Error while creating new ClientBanner: {e}")
 
-        schedule_next_update_for_organization(instance.organization)
+        cache_key = f"schedule_update_{instance.organization.id}"
+        if not cache.get(cache_key):
+            schedule_next_update_for_organization(instance.organization)
+            cache.set(cache_key, True, 30)  # Prevent re-triggering within 30 seconds
+
     except Exception as e:
         logger.error(f"Error while scheduling office hours: {e}")

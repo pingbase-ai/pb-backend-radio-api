@@ -1,7 +1,7 @@
 from django.core.mail import send_mail
 from django.conf import settings
 from django_q.tasks import async_task, schedule
-from django_q.models import Schedule, OrmQ
+from django_q.models import Schedule
 from django.utils import timezone
 from datetime import timedelta, datetime, UTC
 from user.models import User, Organization
@@ -24,34 +24,55 @@ def get_local_time_from_utc(utc_time, timezone_str):
     return utc_time.astimezone(local_tz)
 
 
-def is_office_open(office_hours, timezone_str):
+def find_next_open_close_times(office_hours, timezone_str):
     current_utc_time = datetime.now(UTC).replace(tzinfo=pytz.utc)
     current_local_time = get_local_time_from_utc(current_utc_time, timezone_str)
 
-    weekday = current_local_time.weekday() + 1  # Monday is 1 and Sunday is 7
+    current_weekday = current_local_time.weekday() + 1  # Monday is 1 and Sunday is 7
 
-    if office_hours:
+    days_checked = 0
+    max_days_to_check = 7  # Check one full week
+
+    next_open_time = None
+    next_close_time = None
+
+    while days_checked < max_days_to_check:
         for office_hour in office_hours:
-            if office_hour.weekday == weekday:
-                if office_hour.is_open:
-                    open_time = current_local_time.replace(
-                        hour=office_hour.open_time.hour,
-                        minute=office_hour.open_time.minute,
-                        second=0,
-                        microsecond=0,
-                    )
-                    close_time = current_local_time.replace(
-                        hour=office_hour.close_time.hour,
-                        minute=office_hour.close_time.minute,
-                        second=0,
-                        microsecond=0,
-                    )
-                    return (
-                        open_time <= current_local_time <= close_time,
-                        open_time,
-                        close_time,
-                    )
-    return False, None, None
+            if office_hour.weekday == current_weekday:
+                open_time = current_local_time.replace(
+                    hour=office_hour.open_time.hour,
+                    minute=office_hour.open_time.minute,
+                    second=0,
+                    microsecond=0,
+                )
+                close_time = current_local_time.replace(
+                    hour=office_hour.close_time.hour,
+                    minute=office_hour.close_time.minute,
+                    second=0,
+                    microsecond=0,
+                )
+
+                if open_time <= current_local_time <= close_time:
+                    return True, open_time, close_time
+
+                if current_local_time < open_time and (
+                    next_open_time is None or open_time < next_open_time
+                ):
+                    next_open_time = open_time
+
+                if current_local_time < close_time and (
+                    next_close_time is None or close_time < next_close_time
+                ):
+                    next_close_time = close_time
+
+        current_local_time += timedelta(days=1)
+        current_local_time = current_local_time.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        current_weekday = (current_weekday % 7) + 1
+        days_checked += 1
+
+    return False, next_open_time, next_close_time
 
 
 def schedule_next_update(time_to_run, organization_id, action):
@@ -238,8 +259,10 @@ def schedule_next_update_for_organization(organization):
     if not office_hours or not organization.timezone:
         return
 
-    is_open, open_time, close_time = is_office_open(office_hours, organization.timezone)
-    next_run = close_time if is_open else open_time
+    is_open, next_open_time, next_close_time = find_next_open_close_times(
+        office_hours, organization.timezone
+    )
+    next_run = next_close_time if is_open else next_open_time
 
     if next_run:
         cancel_scheduled_tasks(organization.id)
@@ -250,7 +273,7 @@ def schedule_next_update_for_organization(organization):
 def update_banner_status_for_organisation(organization_id, action="close"):
 
     task_name = f"Update Banner Status {organization_id} {action}"
-    if OrmQ.objects.filter(name=task_name, lock__isnull=False).exists():
+    if Schedule.objects.filter(name=task_name, lock__isnull=False).exists():
         logger.info(
             f"Task for organization {organization_id} is already running. Skipping this run."
         )
@@ -268,7 +291,9 @@ def update_banner_status_for_organisation(organization_id, action="close"):
     if not office_hours or not organization.timezone:
         return
 
-    is_open, open_time, close_time = is_office_open(office_hours, organization.timezone)
+    is_open, next_open_time, next_close_time = find_next_open_close_times(
+        office_hours, organization.timezone
+    )
 
     banner = (
         organization.client_banners.filter(banner_type="ooo")
@@ -277,13 +302,13 @@ def update_banner_status_for_organisation(organization_id, action="close"):
     )
 
     if banner:
-        if action == "close" and not is_open:
+        if action == "close" and is_open:
             banner.is_active = True
-            next_run = open_time
+            next_run = next_open_time
             next_action = "open"
-        elif action == "open" and is_open:
+        elif action == "open" and not is_open:
             banner.is_active = False
-            next_run = close_time
+            next_run = next_close_time
             next_action = "close"
         else:
             logger.info(
