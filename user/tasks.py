@@ -241,7 +241,7 @@ def update_active_status_for_client(clientId, is_active):
     logger.info(f"Updating client status: {clientId} to {is_active}")
     try:
         client = Client.objects.get(id=clientId)
-        client.is_active = is_active
+        client.is_client_online = is_active
         client.save()
     except Exception as e:
         logger.error(f"Error while updating client status: {e}")

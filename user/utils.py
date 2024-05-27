@@ -35,10 +35,11 @@ def find_next_open_close_times(office_hours, timezone_str):
 
     next_open_time = None
     next_close_time = None
+    is_currently_open = False
 
     while days_checked < max_days_to_check:
         for office_hour in office_hours:
-            if office_hour.weekday == current_weekday:
+            if office_hour.weekday == current_weekday and office_hour.is_open:
                 open_time = current_local_time.replace(
                     hour=office_hour.open_time.hour,
                     minute=office_hour.open_time.minute,
@@ -53,16 +54,15 @@ def find_next_open_close_times(office_hours, timezone_str):
                 )
 
                 if open_time <= current_local_time <= close_time:
-                    return True, open_time, close_time
+                    # Office is currently open
+                    is_currently_open = True
+                    if next_close_time is None or close_time < next_close_time:
+                        next_close_time = close_time
 
                 if current_local_time < open_time and (
                     next_open_time is None or open_time < next_open_time
                 ):
                     next_open_time = open_time
-
-                if current_local_time < close_time and (
-                    next_close_time is None or close_time < next_close_time
-                ):
                     next_close_time = close_time
 
         current_local_time += timedelta(days=1)
@@ -72,7 +72,7 @@ def find_next_open_close_times(office_hours, timezone_str):
         current_weekday = (current_weekday % 7) + 1
         days_checked += 1
 
-    return False, next_open_time, next_close_time
+    return is_currently_open, next_open_time, next_close_time
 
 
 def schedule_next_update(time_to_run, organization_id, action):
