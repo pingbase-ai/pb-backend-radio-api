@@ -15,6 +15,8 @@ from corsheaders.defaults import default_headers
 from infra_utils.custom_logging import LOGGING as CUSTOM_LOGGING
 from dotenv import load_dotenv
 from datetime import timedelta
+
+import sentry_sdk
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -33,7 +35,20 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
+VERSION = "0.1.9"
+
 ALLOWED_HOSTS = ["*"]
+
+sentry_sdk.init(
+    dsn="https://15510bd5a562746a59eb19affd288394@o4507129951813632.ingest.us.sentry.io/4507129958432768",
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for performance monitoring.
+    traces_sample_rate=1.0,
+    # Set profiles_sample_rate to 1.0 to profile 100%
+    # of sampled transactions.
+    # We recommend adjusting this value in production.
+    profiles_sample_rate=1.0,
+)
 
 
 # Application definition
@@ -61,6 +76,7 @@ INSTALLED_APPS = [
     "integrations.google_oauth",
     "integrations.outlook",
     "integrations.caldotcom",
+    "health",
 ]
 
 MIDDLEWARE = [
@@ -122,6 +138,12 @@ Q_CLUSTER = {
     "orm": "default",
 }
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -283,6 +305,7 @@ UPLEAD_BASE_URL = os.getenv("UPLEAD_BASE_URL")
 SLACK_CLIENT_ID = os.getenv("SLACK_CLIENT_ID")
 SLACK_REDIRECT_URI = os.getenv("SLACK_REDIRECT_URI")
 SLACK_CLIENT_SECRET = os.getenv("SLACK_CLIENT_SECRET")
+SLACK_APP_SIGNUPS_WEBHOOK_URL = os.getenv("SLACK_APP_SIGNUPS_WEBHOOK_URL")
 
 
 # CALDOTCOM
@@ -293,3 +316,6 @@ CAL_DOT_COM_CLIENT_SECRET = os.getenv("CAL_DOT_COM_CLIENT_SECRET")
 # REVERSE CONTACT
 REVERSE_CONTACT_API_KEY = os.getenv("REVERSE_CONTACT_API_KEY")
 REVERSE_CONTACT_BASE_URL = os.getenv("REVERSE_CONTACT_BASE_URL")
+
+# June
+JUNE_API_KEY = os.getenv("JUNE_API_KEY")

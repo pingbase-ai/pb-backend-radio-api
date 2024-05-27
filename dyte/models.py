@@ -3,7 +3,7 @@ from user.models import Client, EndUser
 from django.conf import settings
 from infra_utils.utils import encode_base64
 from infra_utils.models import CreatedModifiedModel
-from .utils import GROUP_CALL_PARTICIPANT, GROUP_CALL_HOST
+from .utils import GROUP_CALL_PARTICIPANT, GROUP_CALL_HOST, replace_special_chars
 from user.models import User
 
 
@@ -55,7 +55,7 @@ class DyteMeeting(CreatedModifiedModel):
             "record_on_start": record_on_start,
             "recording_config": {
                 "max_seconds": 86400,  # 24 hours
-                "file_name_prefix": file_name_prefix,
+                "file_name_prefix": replace_special_chars(file_name_prefix),
             },
         }
 
@@ -118,6 +118,8 @@ class DyteAuthToken(CreatedModifiedModel):
 
     token = models.TextField()
 
+    auth_id = models.TextField()
+
     meeting = models.ForeignKey(
         DyteMeeting, on_delete=models.DO_NOTHING, related_name="auth_tokens"
     )
@@ -146,11 +148,13 @@ class DyteAuthToken(CreatedModifiedModel):
         return f"{self.end_user.organization.name}"
 
     @staticmethod
-    def get_auth_token(meeting_id, name, user_id, preset=GROUP_CALL_PARTICIPANT):
+    def get_auth_token(
+        meeting_id, name, user_id, preset=GROUP_CALL_PARTICIPANT, photo_url=None
+    ):
         """
         Class method to get the auth token.
 
-        :param client: The client for which the token is to be generated.
+        :param client: The client for which the token is to be generated
         :param is_parent: Whether the token is for the parent client.
         :param preset: The preset for the token.
         :return: The auth token.
@@ -181,6 +185,9 @@ class DyteAuthToken(CreatedModifiedModel):
             if userObj.photo:
                 data["picture"] = userObj.photo
 
+        if photo_url:
+            data["picture"] = photo_url
+
         try:
 
             response = requests.post(end_point, json=data, headers=headers)
@@ -191,8 +198,9 @@ class DyteAuthToken(CreatedModifiedModel):
 
             data = response.json().get("data")
             token = data.get("token")
+            auth_id = data.get("id")
 
-            return token
+            return token, auth_id
 
         except Exception as e:
             logger.error(f"Error while creating Dyte auth token: {e}")
@@ -241,7 +249,7 @@ class DyteAuthToken(CreatedModifiedModel):
             user_id = end_user.user.id
             name = str(end_user.user.first_name).capitalize()
 
-        token = cls.get_auth_token(meeting.meeting_id, name, user_id, preset)
+        token, auth_id = cls.get_auth_token(meeting.meeting_id, name, user_id, preset)
 
         auth_token = cls(
             token=token,
@@ -250,7 +258,73 @@ class DyteAuthToken(CreatedModifiedModel):
             preset=preset,
             end_user=end_user,
             is_parent=is_parent,
+            auth_id=auth_id,
         )
         auth_token.save()
 
         return auth_token
+
+    @classmethod
+    def update_dyte_auth_token(cls, auth_token, photo_url=None):
+        """
+        Update the DyteAuthToken instance with the latest token.
+
+        Args:
+            auth_token (DyteAuthToken): The DyteAuthToken instance to be updated.
+
+        Returns:
+            DyteAuthToken: The updated DyteAuthToken instance.
+
+        """
+        user_id = None
+        name = None
+
+        if auth_token.is_parent:
+            user_id = auth_token.client.user.id
+            name = str(auth_token.client.user.first_name).capitalize()
+        else:
+            user_id = auth_token.end_user.user.id
+            name = str(auth_token.end_user.user.first_name).capitalize()
+
+        token, auth_id = cls.get_auth_token(
+            auth_token.meeting.meeting_id, name, user_id, auth_token.preset, photo_url
+        )
+
+        auth_token.token = token
+        auth_token.auth_id = auth_id
+        auth_token.save()
+
+        return auth_token
+
+    @classmethod
+    def delete_dyte_auth_token(cls, user_id, meeting_id):
+        """
+        Delete the DyteAuthToken instance.
+
+        Args:
+            user_id (int): The ID of the user.
+            meeting_id (str): The ID of the meeting.
+
+        """
+        base_url = settings.DYTE_BASE_URL
+        api_key = settings.DYTE_API_KEY
+        org_id = settings.DYTE_ORG_ID
+
+        end_point = f"{base_url}/meetings/{meeting_id}/participants/{user_id}"
+
+        encoded_token = encode_base64(f"{org_id}:{api_key}")
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {encoded_token}",
+        }
+
+        try:
+            response = requests.delete(end_point, headers=headers)
+            logger.info(
+                f"Response: {response.json()} \n Status Code: {response.status_code} \n Reason: {response.reason} \n"
+            )
+        except Exception as e:
+            logger.error(f"Error while deleting Dyte auth token: {e}")
+
+        return None

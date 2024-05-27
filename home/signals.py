@@ -1,6 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from home.models import Meeting, Call, VoiceNote, EndUserLogin
+from home.models import Meeting, Call, VoiceNote, EndUserLogin, EndUserSession
 from django.conf import settings
 from user.models import EndUser
 from events.models import Event
@@ -17,11 +17,15 @@ from home.event_types import (
 )
 from integrations.slack.utils import create_message_compact, Slack
 from integrations.slack.models import SlackOAuth
-from pusher_channel_app.utils import publish_event_to_client
+from pusher_channel_app.utils import publish_event_to_client, publish_event_to_user
+from june import analytics
+from infra_utils.constants import WIDGET_LAUNCHER_VIEW
+from infra_utils.utils import encode_base64
 
 import logging
 
 logger = logging.getLogger("django")
+analytics.write_key = settings.JUNE_API_KEY
 
 
 @receiver(post_save, sender=EndUserLogin)
@@ -238,6 +242,7 @@ def create_meeting_event(sender, instance, created, **kwargs):
                 "scheduled_time": str(instance.start_time),
                 "role": f"{instance.organizer.end_user.role}",
             }
+            # send also to endUser private channel
             try:
                 publish_event_to_client(
                     organization.token,
@@ -245,8 +250,23 @@ def create_meeting_event(sender, instance, created, **kwargs):
                     "enduser-event",
                     pusher_data_obj,
                 )
+
             except Exception as e:
-                logger.error(f"Error while publishing voice note created event: {e}")
+                logger.error(
+                    f"Error while sending pusher event for event scheduled to agent{e}"
+                )
+            try:
+                publish_event_to_user(
+                    organization.token,
+                    "private",
+                    encode_base64(f"{instance.organizer.end_user.user.id}"),
+                    "client-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error while sending pusher event for event scheduled to endUser{e}"
+                )
 
         except Exception as e:
             logger.error(f"Error while creating meeting event: {e}")
@@ -273,3 +293,42 @@ def create_meeting_event(sender, instance, created, **kwargs):
         # update the existing record of event
         # TODO
         pass
+
+
+@receiver(post_save, sender=EndUserSession)
+def track_enduser_session(sender, instance, created, **kwargs):
+    """
+    Signal to create an event for endUser session.
+    """
+    if created:
+        try:
+            organization = instance.organization
+            end_user = instance.end_user
+            user = end_user.user
+
+            # june identify
+            analytics.identify(
+                user_id=str(user.id),
+                traits={
+                    "email": user.email,
+                    "firstName": user.first_name,
+                    "lastName": user.last_name,
+                    "role": end_user.role,
+                    "industry": end_user.company,
+                    "plan": end_user.trial_type,
+                    "orgKey": organization.token,
+                    "userType": "ENDUSER",
+                },
+            )
+
+            # june track
+            analytics.track(
+                user_id=str(user.id),
+                event=WIDGET_LAUNCHER_VIEW,
+                properties={
+                    "session_id": str(instance.session_id),
+                    "last_active": instance.last_session_active,
+                },
+            )
+        except Exception as e:
+            logger.error(f"Error while tracking enduser session: {e}")

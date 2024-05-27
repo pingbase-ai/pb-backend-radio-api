@@ -1,6 +1,6 @@
 from django.db import models
 from django_q.tasks import async_task
-from user.models import Organization
+from user.models import Organization, User
 
 
 class Event(models.Model):
@@ -105,6 +105,24 @@ class Event(models.Model):
     # meeting specifi field
     scheduled_time = models.DateTimeField(blank=True, null=True)
 
+    # Source User
+    src_user = models.ForeignKey(
+        User,
+        on_delete=models.DO_NOTHING,
+        related_name="source_user",
+        blank=True,
+        null=True,
+    )
+
+    # Destination User
+    dest_user = models.ForeignKey(
+        User,
+        on_delete=models.DO_NOTHING,
+        related_name="destination_user",
+        blank=True,
+        null=True,
+    )
+
     # create a string representation for the event model
     def __str__(self):
         return self.event_type
@@ -160,6 +178,8 @@ class Event(models.Model):
             organization=organization,
             scheduled_time=scheduled_time,
         )
+        event.src_user_id = source_user_id
+        event.dest_user_id = destination_user_id
         event.save()
         return event
 

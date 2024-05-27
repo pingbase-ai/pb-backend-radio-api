@@ -63,6 +63,7 @@ urlpatterns = [
     path("register-enduser", views.CreateEndUserView.as_view(), name="create-enduser"),
     path("enduser/init", views.InitEndUserView.as_view(), name="init-enduser"),
     path("enduser/exit", views.ExitEndUserView.as_view(), name="exit-enduser"),
+    path("client", views.ClientView.as_view(), name="client-list"),
     # not completely done
     path("register/", views.RegistrationView.as_view(), name="register"),
     path("register-team/", views.TeamRegistrationView.as_view(), name="register-team"),

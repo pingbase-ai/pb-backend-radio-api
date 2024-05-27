@@ -15,6 +15,11 @@ urlpatterns = [
         views.ActivitiesCreateModifyClientAPIView.as_view(),
         name="create_modify_client_activities",
     ),
+    path(
+        "client/checklist",
+        views.ChecklistClientAPIView.as_view(),
+        name="retrieve_checklist_client",
+    ),
     # client sending voice note
     re_path(
         r"^client/activity/voice-note/upload/(?P<filename>[^/]+)$",

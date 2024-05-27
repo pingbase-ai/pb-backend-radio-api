@@ -2,6 +2,11 @@ from rest_framework import serializers
 from .models import Event
 from user.models import User
 from user.serializers import CustomEndUserSerializer
+from home.models import EndUserSession
+
+import logging
+
+logger = logging.getLogger("django")
 
 
 class CustomEventSerializerV1(serializers.ModelSerializer):
@@ -28,6 +33,8 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
     enduser_is_online = serializers.SerializerMethodField()
     enduser_last_login = serializers.SerializerMethodField()
     enduser_email = serializers.SerializerMethodField()
+    enduser_last_session_login = serializers.SerializerMethodField()
+    enduser_is_new = serializers.SerializerMethodField()
 
     enduser_role = serializers.SerializerMethodField()
     enduser_company = serializers.SerializerMethodField()
@@ -80,93 +87,69 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
         return obj.is_parent
 
     def get_source_username(self, obj):
-        if obj.source_user_id:
-            username = User.objects.filter(id=obj.source_user_id).first().first_name
-            return username
-        return ""
+        return obj.src_user.first_name if obj.src_user else None
 
     def get_destination_username(self, obj):
-        if obj.destination_user_id:
-            username = (
-                User.objects.filter(id=obj.destination_user_id).first().first_name
-            )
-            return username
-        return ""
+        return obj.dest_user.first_name if obj.dest_user else None
 
     def get_timestamp(self, obj):
         return obj.timestamp
 
     def get_enduser_id(self, obj):
-        if obj.is_parent:
-            return obj.destination_user_id
-        return obj.source_user_id
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        if user:
+            return user.id
+        return None
 
     def get_enduser_first_name(self, obj):
-        if obj.is_parent:
-            return User.objects.filter(id=obj.destination_user_id).first().first_name
-        return User.objects.filter(id=obj.source_user_id).first().first_name
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        return user.first_name if user else None
 
     def get_enduser_last_name(self, obj):
-        if obj.is_parent:
-            return User.objects.filter(id=obj.destination_user_id).first().last_name
-        return User.objects.filter(id=obj.source_user_id).first().last_name
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        return user.last_name if user else None
 
     def get_enduser_is_online(self, obj):
-        if obj.is_parent:
-            return User.objects.filter(id=obj.destination_user_id).first().is_online
-        return User.objects.filter(id=obj.source_user_id).first().is_online
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        return user.is_online if user else None
 
     def get_enduser_last_login(self, obj):
-        if obj.is_parent:
-            return User.objects.filter(id=obj.destination_user_id).first().last_login
-        return User.objects.filter(id=obj.source_user_id).first().last_login
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        return user.last_login if user else None
+
+    def get_enduser_last_session_login(self, obj):
+        try:
+            if obj.is_parent:
+                return obj.dest_last_session
+            else:
+                return obj.src_last_session
+        except Exception as e:
+            logger.error(f"Error while fetching last session login: {e}")
+            return None
 
     def get_enduser_role(self, obj):
-        if obj.is_parent:
-            return User.objects.filter(id=obj.destination_user_id).first().end_user.role
-        return User.objects.filter(id=obj.source_user_id).first().end_user.role
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        return user.end_user.role if user else None
 
     def get_enduser_email(self, obj):
-        if obj.is_parent:
-            return User.objects.filter(id=obj.destination_user_id).first().email
-        return User.objects.filter(id=obj.source_user_id).first().email
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        return user.email if user else None
 
     def get_enduser_company(self, obj):
-        if obj.is_parent:
-            return (
-                User.objects.filter(id=obj.destination_user_id).first().end_user.company
-            )
-        return User.objects.filter(id=obj.source_user_id).first().end_user.company
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        return user.end_user.company if user else None
 
     def get_enduser_sessions(self, obj):
-        if obj.is_parent:
-            return (
-                User.objects.filter(id=obj.destination_user_id)
-                .first()
-                .end_user.total_sessions
-            )
-        return (
-            User.objects.filter(id=obj.source_user_id).first().end_user.total_sessions
-        )
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        return user.end_user.total_sessions if user else None
 
     def get_enduser_trail_type(self, obj):
-
-        if obj.is_parent:
-            return (
-                User.objects.filter(id=obj.destination_user_id)
-                .first()
-                .end_user.trial_type
-            )
-        return User.objects.filter(id=obj.source_user_id).first().end_user.trial_type
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        return user.end_user.trial_type if user else None
 
     def get_enduser_linkedin(self, obj):
-        if obj.is_parent:
-            return (
-                User.objects.filter(id=obj.destination_user_id)
-                .first()
-                .end_user.linkedin
-            )
-        return User.objects.filter(id=obj.source_user_id).first().end_user.linkedin
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        return user.end_user.linkedin if user else None
 
     def get_storage_url(self, obj):
         return obj.storage_url
@@ -179,6 +162,14 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
 
     def get_is_unread(self, obj):
         return obj.is_unread
+
+    def get_enduser_is_new(self, obj):
+        try:
+            user = obj.dest_user if obj.is_parent else obj.src_user
+            return user.end_user.is_new if user else False
+        except Exception as e:
+            logger.error(f"Error while fetching is_new: {e}")
+            return False
 
     class Meta:
         model = Event
@@ -204,12 +195,14 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             "enduser_last_name",
             "enduser_is_online",
             "enduser_last_login",
+            "enduser_last_session_login",
             "enduser_role",
             "enduser_email",
             "enduser_company",
             "enduser_sessions",
             "enduser_trail_type",
             "enduser_linkedin",
+            "enduser_is_new",
             "storage_url",
             "is_seen_enduser",
             "is_played",

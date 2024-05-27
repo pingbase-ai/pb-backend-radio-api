@@ -12,4 +12,11 @@ class DyteAdmin(admin.ModelAdmin):
 
 @admin.register(DyteAuthToken)
 class DyteAuthTokenAdmin(admin.ModelAdmin):
-    list_display = ("meeting", "preset")
+    list_display = (
+        "meeting",
+        "preset",
+        "client",
+        "end_user",
+        "created_at",
+        "modified_at",
+    )

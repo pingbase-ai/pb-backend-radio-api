@@ -26,6 +26,9 @@ WEEKDAYS = [
     (7, ("Sunday")),
 ]
 
+# Banner types
+BANNER_TYPES = [("ooo", "OOO"), ("info", "INFO")]
+
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password, **extra_fields):
@@ -219,6 +222,7 @@ class Client(CreatedModifiedModel):
     )
     role = models.CharField(max_length=200, choices=ROLE_CHOICES, default=STANDARD_USER)
     onboarded = models.BooleanField(default=False)
+    is_client_online = models.BooleanField(default=False)
 
     def __str__(self):
         return self.organization.name + " - " + self.user.email
@@ -250,6 +254,7 @@ class EndUser(CreatedModifiedModel):
     city = models.CharField(max_length=200, null=True, blank=True)
     country = models.CharField(max_length=200, null=True, blank=True)
     welcome_note_sent = models.BooleanField(default=False)
+    is_new = models.BooleanField(default=False, blank=True, null=True)
 
     objects = EndUserManager()
 
@@ -269,6 +274,7 @@ class EndUser(CreatedModifiedModel):
             "linkedin": self.linkedin,
             "city": self.city,
             "country": self.country,
+            "is_new": self.is_new,
         }
 
 
@@ -393,3 +399,30 @@ class Widget(models.Model):
     avatar = models.CharField(max_length=50, choices=AVATAR_CHOICES)
     position = models.CharField(max_length=50, choices=POSITION_CHOICES)
     is_active = models.BooleanField(default=True)
+
+
+class FeatureFlagConnect(models.Model):
+    feature_name = models.CharField(max_length=100, unique=True)
+    enabled = models.BooleanField(default=False)
+    organization = models.ManyToManyField(
+        Organization,
+        blank=True,
+        help_text="Organizations for whom the feature is enabled",
+        related_name="feature_flags_connect",
+    )
+
+    def __str__(self):
+        return self.feature_name
+
+
+class ClientBanner(CreatedModifiedModel):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="client_banners"
+    )
+    banner = models.TextField()
+    hyperlink = models.CharField(max_length=256)
+    is_active = models.BooleanField(default=True)
+    banner_type = models.CharField(max_length=50, choices=BANNER_TYPES, default="ooo")
+
+    def __str__(self):
+        return self.organization.name

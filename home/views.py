@@ -13,11 +13,21 @@ from .serializers import (
     VoiceNoteSerializer,
     EndUserLoginSerializer,
 )
-from .models import Meeting, Call, VoiceNote, EndUserLogin
+from .models import Meeting, Call, VoiceNote, EndUserLogin, EndUserSession
 from user.models import Client, User, EndUser
 from .utils import upload_to_azure_blob, fetch_session_id_from_dyte
 from user.utils import is_request_within_office_hours
-from django.db.models import Q
+from django.db.models import (
+    Q,
+    Case,
+    When,
+    Count,
+    IntegerField,
+    Prefetch,
+    OuterRef,
+    Subquery,
+    Max,
+)
 from rest_framework.parsers import FileUploadParser
 from .event_types import (
     CALL_SCHEDULED,
@@ -30,6 +40,7 @@ from .event_types import (
     SUCCESS,
     CALLED_US,
     MISSED_THEIR_CALL,
+    DECLINED_CALL,
 )
 from pusher_channel_app.utils import (
     publish_event_to_client,
@@ -49,10 +60,26 @@ import json
 import ffmpeg
 import os
 
+
 logger = logging.getLogger("django")
 
 
 # Create your views here.
+
+
+class ChecklistClientAPIView(CustomAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        # profile photo, voice note, call a user
+        photo = bool(user.photo)
+        voice_note = VoiceNote.objects.filter(sender=user, is_parent=True).exists()
+        call = Call.objects.filter(caller=user, is_parent=True).exists()
+
+        return Response({"photo": photo, "voice_note": voice_note, "call": call})
+
+
 class TasksClientAPIView(CustomAPIView):
 
     permission_classes = [IsAuthenticated]
@@ -61,34 +88,28 @@ class TasksClientAPIView(CustomAPIView):
 
         user = request.user
 
-        client = Client.objects.filter(user=user).first()
-        if not client:
+        try:
+            client = Client.objects.get(user=user)
+        except Client.DoesNotExist:
             return Response(
                 {"message": "Client not found for the user"},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_404_NOT_FOUND,
             )
+
+        current_time = timezone.now()
         organization = client.organization
         # Retrieve Meeting, Call, and Voice Notes data for the client
-        meetings = Event.objects.filter(
-            event_type=CALL_SCHEDULED,
-            organization=organization,
-            scheduled_time__gte=timezone.now(),
+        events_stats = Event.objects.filter(organization=organization).aggregate(
+            meetings=Count(
+                "id",
+                filter=Q(event_type="CALL_SCHEDULED", scheduled_time__gte=current_time),
+            ),
+            calls=Count("id", filter=Q(event_type="MISSED_THEIR_CALL", is_unread=True)),
+            voice_notes=Count(
+                "id", filter=Q(event_type="SENT_US_AUDIO_NOTE", is_unread=True)
+            ),
         )
-        calls = Event.objects.filter(
-            organization=organization, is_unread=True, event_type=MISSED_THEIR_CALL
-        )
-        voice_notes = Event.objects.filter(
-            organization=organization, is_unread=True, event_type=SENT_US_AUDIO_NOTE
-        )
-
-        # Return the serialized data as a response
-        return Response(
-            {
-                "meetings": meetings.count(),
-                "calls": calls.count(),
-                "voice_notes": voice_notes.count(),
-            }
-        )
+        return Response(events_stats)
 
 
 class ActivitiesClientAPIView(CustomAPIView):
@@ -739,6 +760,11 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
             ).first()
 
             if not clientAuthToken:
+                # remove the existing cache from dyte
+                # try:
+                #     DyteAuthToken.delete_dyte_auth_token(user.id, endUserMeetingId)
+                # except Exception as e:
+                #     logger.error(f"Error while deleting Dyte auth token: {e}")
                 clientAuthToken = DyteAuthToken.create_dyte_auth_token(
                     meeting=endUserMeetingObj,
                     is_parent=True,
@@ -754,6 +780,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                 "sender": user.first_name,
                 "storage_url": "",
                 "photo": user.photo,
+                "sender_id": user.id,
             }
             try:
                 publish_event_to_user(
@@ -1120,6 +1147,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
         endUserId = request.query_params.get("endUserId")
         call_id = request.data.get("call_id", None)
         update_type = request.data.get("update_type", None)
+        current_timestamp = timezone.now()
         if not call_id or not update_type:
             return Response(
                 {"message": "call_id or update_type not provided"},
@@ -1134,6 +1162,17 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
             )
         try:
             if update_type == "mark_as_missed":
+                is_request_within_office_hours_bool = is_request_within_office_hours(
+                    organization
+                )
+                # check if the enduser ended the call before 30 Seconds and is within office hours
+                if current_timestamp - call.created_at < datetime.timedelta(seconds=30):
+                    if is_request_within_office_hours_bool:
+                        return Response(
+                            {"message": f"Call {update_type} successfully"},
+                            status=status.HTTP_200_OK,
+                        )
+
                 call.status = "missed"
                 call.event_type = MISSED_THEIR_CALL
                 call.save()
@@ -1142,9 +1181,6 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     # send back a automated message to the endUser
                     # if the call has happend within office hours -> call_you_back_note
                     # if the call has happend outside office hours -> out_of_office_note
-                    is_request_within_office_hours_bool = (
-                        is_request_within_office_hours(organization)
-                    )
                     if is_request_within_office_hours_bool:
                         task_id = async_task(
                             "user.tasks.send_voice_note",
@@ -1179,50 +1215,108 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     "unique_id": f"{call.caller.id}",
                     "role": f"{call.caller.end_user.role}",
                 }
-            try:
-                publish_event_to_client(
-                    str(call.organization.token),
-                    "private",
-                    "enduser-event",
-                    pusher_data_obj,
-                )
-            except Exception as e:
-                logger.error(f"Error while publishing missed call event: {e}")
-
-            # Create a new event type for this update
-            agent_name = None
-            if call.is_parent:
-                agent_name = call.caller.first_name
-            else:
-                agent_name = call.receiver.first_name if call.receiver else None
-
-            try:
-                # check if event with interaction_id already exists
-                existingEvent = Event.objects.filter(
-                    interaction_id=call.call_id
-                ).first()
-                logger.info(f"\n\n\n existingEvent: {existingEvent} \n\n\n")
-                if not existingEvent:
-                    event = Event.create_event_async(
-                        event_type=MISSED_THEIR_CALL,
-                        source_user_id=call.caller.id,
-                        destination_user_id=None,
-                        status=SUCCESS,
-                        duration=0,
-                        frontend_screen="NA",
-                        agent_name=agent_name,
-                        initiated_by=MANUAL,
-                        interaction_type=CALL,
-                        interaction_id=call.call_id,
-                        is_parent=call.is_parent,
-                        storage_url=call.file_url,
-                        organization=organization,
-                        error_stack_trace=None,
-                        request_meta=None,
+                try:
+                    publish_event_to_client(
+                        str(call.organization.token),
+                        "private",
+                        "enduser-event",
+                        pusher_data_obj,
                     )
-            except Exception as e:
-                logger.error(f"Error while creating call event: {e}")
+                except Exception as e:
+                    logger.error(f"Error while publishing missed call event: {e}")
 
+                # Create a new event type for this update
+                agent_name = None
+                if call.is_parent:
+                    agent_name = call.caller.first_name
+                else:
+                    agent_name = call.receiver.first_name if call.receiver else None
+
+                try:
+                    # check if event with interaction_id already exists
+                    existingEvent = Event.objects.filter(
+                        interaction_id=call.call_id
+                    ).first()
+                    logger.info(f"\n\n\n existingEvent: {existingEvent} \n\n\n")
+                    if not existingEvent:
+                        event = Event.create_event_async(
+                            event_type=MISSED_THEIR_CALL,
+                            source_user_id=call.caller.id,
+                            destination_user_id=None,
+                            status=SUCCESS,
+                            duration=0,
+                            frontend_screen="NA",
+                            agent_name=agent_name,
+                            initiated_by=MANUAL,
+                            interaction_type=CALL,
+                            interaction_id=call.call_id,
+                            is_parent=call.is_parent,
+                            storage_url=call.file_url,
+                            organization=organization,
+                            error_stack_trace=None,
+                            request_meta=None,
+                        )
+                except Exception as e:
+                    logger.error(f"Error while creating call event: {e}")
+
+            elif update_type == "declined_call":
+                call.status = "declined"
+                call.event_type = DECLINED_CALL
+                call.save()
+
+                # send a notification to pusher
+                pusher_data_obj = {
+                    "source_event_type": "declined-call",
+                    "id": str(call.call_id),
+                    "storage_url": "",
+                    "sender": f"{call.caller.first_name} {call.caller.last_name}",
+                    "timestamp": str(timezone.now()),
+                    "unique_id": f"{call.caller.id}",
+                    "call_id": call_id,
+                }
+                try:
+                    publish_event_to_client(
+                        str(call.organization.token),
+                        "private",
+                        "enduser-event",
+                        pusher_data_obj,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while publishing declined call event: {e}")
+
+                # Create a new event type for this update
+                agent_name = None
+                if call.is_parent:
+                    agent_name = call.caller.first_name
+                else:
+                    agent_name = call.receiver.first_name if call.receiver else None
+
+                try:
+                    # check if event with interaction_id already exists
+                    existingEvent = Event.objects.filter(
+                        interaction_id=call.call_id
+                    ).first()
+                    logger.info(f"\n\n\n existingEvent: {existingEvent} \n\n\n")
+                    if not existingEvent:
+                        event = Event.create_event_async(
+                            event_type=DECLINED_CALL,
+                            source_user_id=call.caller.id,
+                            destination_user_id=call.receiver.id,
+                            status=SUCCESS,
+                            duration=0,
+                            frontend_screen="NA",
+                            agent_name=agent_name,
+                            initiated_by=MANUAL,
+                            interaction_type=CALL,
+                            interaction_id=call.call_id,
+                            is_parent=call.is_parent,
+                            storage_url=call.file_url,
+                            organization=organization,
+                            error_stack_trace=None,
+                            request_meta=None,
+                        )
+                except Exception as e:
+                    logger.error(f"Error while creating call event: {e}")
         except Exception as e:
             logger.error(f"Error while updating call: {e}")
             return Response(
@@ -1250,8 +1344,24 @@ class EndUserListAPIView(CustomAPIView):
             end_users = EndUser.objects.filter(
                 organization=organization, user__is_online=True
             )
+        last_session_subquery = (
+            EndUserSession.objects.filter(end_user=OuterRef("pk"))
+            .order_by("-modified_at")
+            .values("last_session_active")[:1]
+        )
 
-        serialized_data = CustomEndUserSerializer(end_users, many=True)
+        queryset = (
+            end_users.select_related("user")
+            .prefetch_related(
+                Prefetch("sessions"),
+            )
+            .annotate(
+                last_session=Subquery(last_session_subquery),
+                total_sessions_count=Count("sessions"),
+            )
+        )
+
+        serialized_data = CustomEndUserSerializer(queryset, many=True)
         return Response(serialized_data.data, status=status.HTTP_200_OK)
 
 

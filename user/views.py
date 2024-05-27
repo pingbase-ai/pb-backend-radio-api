@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from .utils import Mail, remove_spaces_from_text
+from .utils import Mail, remove_spaces_from_text, schedule_active_status_for_client
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import generics, status, views, permissions
 from django.conf import settings
@@ -47,6 +47,7 @@ from .serializers import (
     SetNewPasswordAdhocSerializer,
     ClientMemberSerializer,
     CustomEndUserSerializer,
+    FeatureFlagConnectSerializer,
 )
 from infra_utils.views import (
     CustomAPIView,
@@ -56,12 +57,20 @@ from infra_utils.views import (
 from infra_utils.utils import password_rule_check, generate_strong_password
 from django.db.models import Q
 from django.shortcuts import redirect
-from .constants import get_integration_code_snippet
+from .constants import (
+    get_integration_code_snippet,
+    get_new_app_signup_slack_block_template_part_1,
+    get_new_app_signup_slack_block_template_part_2,
+    get_new_app_signup_slack_block_template_part_3,
+)
 from home.models import EndUserLogin, EndUserSession
 from django.utils import timezone
+from user.tasks import send_slack_blocks_async
+from dyte.utils import replace_special_chars
 
 import logging
 import json
+import datetime
 
 User = get_user_model()
 logger = logging.getLogger("django")
@@ -214,7 +223,8 @@ class SignUpView(CustomGenericAPIView):
                     )
 
                 if not organization:
-                    organization = Organization.objects.create(name=company)
+                    final_company_name = replace_special_chars(company)
+                    organization = Organization.objects.create(name=final_company_name)
                     organization.save()
 
                 # create the user
@@ -267,6 +277,25 @@ class SignUpView(CustomGenericAPIView):
                         role="admin",
                     )
                     client.save()
+
+                # send a notification to slack
+                blocks = [
+                    *get_new_app_signup_slack_block_template_part_1(),
+                    *get_new_app_signup_slack_block_template_part_2(company, email),
+                    *get_new_app_signup_slack_block_template_part_3(),
+                ]
+                slack_hook = settings.SLACK_APP_SIGNUPS_WEBHOOK_URL
+
+                data = {
+                    "blocks": blocks,
+                    "slack_hook": slack_hook,
+                }
+                try:
+                    send_slack_blocks_async(data)
+                except Exception as e:
+                    logger.error(
+                        f"Error while sending slack notification from view: {e}"
+                    )
 
                 return Response(user_data, status=status.HTTP_201_CREATED)
             except Exception as e:
@@ -438,13 +467,20 @@ class InviteTeamateView(CustomGenericAPIView):
             except Exception as e:
                 logger.error(f"Error: {e}")
         else:
-            message = ". Hello, team player! You've been served an invite to join Pingbase—Yay! \nUse the link below to verify your email and get ready to rally. \nIf this serve surprises you and you weren’t expecting any account verification email, just let it bounce and ignore this message. \n"
-            email_body = "Hi " + user.email + message + verification_link
+            message = f"You've been served an invite to join Pingbase by {request.user.email}!"
+
+            html_email_body = (
+                f"Hi there,<br><br>"
+                f"{message}<br><br>"
+                f"Use the link below to verify your email and get started:"
+                f"<a href='{verification_link}'>Click here to get started</a>"
+                f"<br><br>Thanks,<br>Team PingBase<br>"
+            )
             data = {
-                "email_body": email_body,
+                "email_body": None,
                 "to_email": user.email,
-                "email_subject": "has invited you to PingBase,",
-                "html_email_body": None,
+                "email_subject": "You’ve been invited to PingBase",
+                "html_email_body": html_email_body,
             }
             try:
                 Mail.send_email(data)
@@ -572,10 +608,11 @@ class ProfilePicView(CustomGenericAPIView):
         else:
             extension = "unknown"
         try:
+            timestamp = timezone.now().strftime("%Y%m%d%H%M%S")
             stored_url = upload_to_azure_blob(
                 file,
                 f"profile-pics/{remove_spaces_from_text(user.client.organization.name)}",
-                f"{user.id}.{extension}",
+                f"{user.id}_{timestamp}.{extension}",
             )
             user.photo = stored_url
             user.save()
@@ -959,9 +996,32 @@ class CreateEndUserView(CustomGenericAPIView):
 
         # end_user = EndUser.objects.filter(email=request.data.get("email")).first()
 
+        is_new = request.data.get("is_new")
         if user:
+            sessions = EndUserSession.objects.filter(
+                end_user=user.end_user, organization=organization
+            ).count()
+            endUser = user.end_user
+            is_new = request.data.get("is_new")
+
+            try:
+                endUser.first_name = request.data.get("first_name")
+                endUser.last_name = request.data.get("last_name")
+                endUser.role = request.data.get("role")
+                endUser.trial_type = request.data.get("trial_type")
+                endUser.company = request.data.get("company")
+                endUser.is_new = request.data.get("is_new")
+                endUser.save()
+            except Exception as e:
+                logger.error(f"Error while updating endUser details: {e}")
+
             return Response(
-                {"id": user.id, "message": "EndUser already exists"},
+                {
+                    "id": user.id,
+                    "message": "EndUser already exists",
+                    "sessions": sessions,
+                    "is_new": endUser.is_new,
+                },
                 status=status.HTTP_200_OK,
             )
         required_data = {
@@ -972,14 +1032,19 @@ class CreateEndUserView(CustomGenericAPIView):
             "role": request.data.get("role"),
             "trial_type": request.data.get("trial_type"),
             "company": request.data.get("company"),
+            "is_new": request.data.get("is_new"),
         }
         serializer = EndUserSerializer(data=required_data)
         if serializer.is_valid():
             end_user = serializer.save()
+            # Create a new EndUserLogin instance
+            async_id = EndUserSession.create_session_async(end_user, organization)
             return Response(
                 {
                     "message": "EndUser created successfully.",
                     "id": end_user.user.id,
+                    "sessions": 1,
+                    "is_new": end_user.is_new,
                 },
                 status=status.HTTP_201_CREATED,
             )
@@ -1024,6 +1089,9 @@ class InitEndUserView(generics.GenericAPIView):
                         "avatar": widgetAvatarNumber,
                     },
                     "team_name": teamName,
+                    "features": FeatureFlagConnectSerializer(
+                        organization.feature_flags_connect.all(), many=True
+                    ).data,
                 },
                 status=status.HTTP_200_OK,
             )
@@ -1059,6 +1127,37 @@ class ExitEndUserView(CustomGenericAPIView):
 
         return Response(
             {"message": "EndUser exit event recorded"},
+            status=status.HTTP_200_OK,
+        )
+
+
+class ClientView(CustomGenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        user = request.user
+        data = request.data
+        client = user.client
+
+        # check if the office is open or not
+        active = data.get("active", False)
+        scheduled_time = data.get("scheduled_time", None)
+
+        try:
+            client.is_client_online = active
+            client.save()
+        except Exception as e:
+            logger.error(f"Error: {e}")
+
+        if scheduled_time:
+            scheduled_time = datetime.datetime.fromisoformat(scheduled_time)
+            try:
+                schedule_active_status_for_client(client, active, scheduled_time)
+            except Exception as e:
+                logger.error(f"Error: {e}")
+
+        return Response(
+            {"message": "Client status updated successfully"},
             status=status.HTTP_200_OK,
         )
 
@@ -1288,11 +1387,12 @@ class RequestPasswordResetEmailView(CustomGenericAPIView):
             )
             absurl = "https://" + current_site + relativeLink
 
-            email_body = (
-                "Hello! \n Use the link below to reset your password \n" + absurl
+            html_email_body = (
+                f"Hello! \n" f"<a href='{absurl}'>Click Here To Reset Password</a> \n"
             )
             data = {
-                "email_body": email_body,
+                "html_email_body": html_email_body,
+                "email_body": None,
                 "to_email": user.email,
                 "email_subject": "Reset your password",
             }

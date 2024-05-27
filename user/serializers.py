@@ -17,6 +17,7 @@ from .models import (
     OutOfOfficeNote,
     Client,
     Organization,
+    FeatureFlagConnect,
 )
 import datetime
 import logging
@@ -41,6 +42,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
     trial_type = serializers.SerializerMethodField()
     linkedin = serializers.SerializerMethodField()
     last_session_login = serializers.SerializerMethodField()
+    is_new = serializers.SerializerMethodField()
 
     def get_id(self, obj):
         return obj.user.id
@@ -67,8 +69,11 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
         return obj.company
 
     def get_sessions(self, obj):
-        total_sessions = EndUserSession.objects.filter(end_user=obj).count()
-        return total_sessions
+        try:
+            return obj.total_sessions_count
+        except Exception as e:
+            logger.error(f"Error while fetching total sessions: {e}")
+            return 0
 
     def get_trial_type(self, obj):
         return obj.trial_type
@@ -79,17 +84,13 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
 
     def get_last_session_login(self, obj):
         try:
-            last_session = (
-                EndUserSession.objects.filter(end_user=obj)
-                .order_by("-modified_at")
-                .first()
-            )
-            if last_session:
-                return last_session.last_session_active
-            return None
+            return obj.last_session
         except Exception as e:
             logger.error(f"Error while fetching last session login: {e}")
             return None
+
+    def get_is_new(self, obj):
+        return obj.is_new
 
     class Meta:
         model = EndUser
@@ -105,6 +106,8 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
             "sessions",
             "trial_type",
             "linkedin",
+            "last_session_login",
+            "is_new",
         ]
 
 
@@ -118,6 +121,7 @@ class EndUserSerializer(serializers.ModelSerializer):
     role = serializers.CharField(write_only=True)
     trial_type = serializers.CharField(write_only=True)
     company = serializers.CharField(write_only=True)
+    is_new = serializers.BooleanField(write_only=True)
 
     class Meta:
         model = EndUser
@@ -129,6 +133,7 @@ class EndUserSerializer(serializers.ModelSerializer):
             "role",
             "trial_type",
             "company",
+            "is_new",
         ]
 
     def create(self, validated_data):
@@ -536,3 +541,9 @@ class ClientMemberSerializer(serializers.ModelSerializer):
             "role",
             "lastLoginTimestamp",
         ]
+
+
+class FeatureFlagConnectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeatureFlagConnect
+        fields = ["feature_name", "enabled"]

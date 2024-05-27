@@ -11,6 +11,8 @@ from .models import (
     CallYouBackNote,
     OutOfOfficeNote,
     Widget,
+    FeatureFlagConnect,
+    ClientBanner,
 )
 
 # Register your models here.
@@ -42,11 +44,7 @@ class EndUserAdmin(ModelAdmin):
 
 @admin.register(Organization)
 class OrganizationAdmin(ModelAdmin):
-    list_display = (
-        "name",
-        "website",
-        "team_name",
-    )
+    list_display = ("name", "website", "team_name", "token")
 
 
 @admin.register(OfficeHours)
@@ -75,3 +73,14 @@ class OutOfOfficeNoteAdmin(ModelAdmin):
 @admin.register(Widget)
 class WidgetAdmin(ModelAdmin):
     list_display = ("organization", "position", "avatar")
+
+
+@admin.register(FeatureFlagConnect)
+class FeatureFlagAdmin(ModelAdmin):
+    list_display = ("feature_name", "enabled")
+    filter_horizontal = ("organization",)
+
+
+@admin.register(ClientBanner)
+class ClientBannerAdmin(ModelAdmin):
+    list_display = ("organization", "banner", "is_active", "banner_type")

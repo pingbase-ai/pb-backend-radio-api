@@ -5,9 +5,13 @@ from .constants import PINGBASE_BOT
 from infra_utils.utils import encode_base64
 from events.models import Event
 from home.event_types import WE_SENT_AUDIO_NOTE, SUCCESS, AUTOMATIC, VOICE_NOTE
+from django_q.tasks import async_task
+from .utils import schedule_next_update_for_organization
 
 import uuid
 import logging
+import json
+import requests
 
 
 logger = logging.getLogger("django")
@@ -202,3 +206,41 @@ def send_voice_note(user_id, type):
     else:
         logger.error(f"Invalid voice note type: {type}")
         return
+
+
+def send_slack_blocks(blocks, slack_hook):
+    slack_data = {"blocks": blocks}
+    try:
+        response = requests.post(
+            slack_hook,
+            data=json.dumps(slack_data),
+            headers={"Content-Type": "application/json"},
+        )
+        if response.status_code != 200:
+            logger.error(f"Failed to send slack notification: {response.text}")
+        else:
+            logger.info("Slack notification sent successfully")
+    except Exception as e:
+        logger.error(f"Error while sending slack blocks: {e}")
+
+
+def send_slack_blocks_async(data):
+    task_id = async_task(
+        "user.tasks.send_slack_blocks", data["blocks"], data["slack_hook"]
+    )
+    print(f"Slack blocks send task scheduled with ID: {task_id}")
+
+
+def update_banner_status():
+    organizations = Organization.objects.all()
+    for organization in organizations:
+        schedule_next_update_for_organization(organization)
+
+
+def update_active_status_for_client(client, is_active):
+    try:
+        client.is_active = is_active
+        client.save()
+    except Exception as e:
+        logger.error(f"Error while updating client status: {e}")
+        return False
