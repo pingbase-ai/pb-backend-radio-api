@@ -56,8 +56,8 @@ def find_next_open_close_times(office_hours, timezone_str):
                 if open_time <= current_local_time <= close_time:
                     # Office is currently open
                     is_currently_open = True
-                    if next_close_time is None or close_time < next_close_time:
-                        next_close_time = close_time
+                    next_close_time = close_time
+                    return is_currently_open, next_open_time, next_close_time
 
                 if current_local_time < open_time and (
                     next_open_time is None or open_time < next_open_time
