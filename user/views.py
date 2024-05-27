@@ -55,7 +55,7 @@ from infra_utils.views import (
     CustomGenericAPIListView,
 )
 from infra_utils.utils import password_rule_check, generate_strong_password
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.shortcuts import redirect
 from .constants import (
     get_integration_code_snippet,
@@ -522,7 +522,17 @@ class ProfileView(CustomGenericAPIView):
     def get(self, request, type):
         user = request.user
         if type == "client":
-            client = Client.objects.filter(user=user).first()
+            # prefetch the organization
+            client = (
+                Client.objects.prefetch_related(
+                    "organization",
+                    "organization__client_banners",
+                    "organization__office_hours",
+                )
+                .filter(user=user)
+                .first()
+            )
+
             if not client:
                 return Response(
                     {"message": "Client doesn't exist"},
@@ -1139,7 +1149,6 @@ class ClientView(CustomGenericAPIView):
         data = request.data
         client = user.client
 
-        # check if the office is open or not
         active = data.get("active", False)
         scheduled_time = data.get("scheduled_time", None)
 

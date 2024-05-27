@@ -18,6 +18,7 @@ from .models import (
     Client,
     Organization,
     FeatureFlagConnect,
+    ClientBanner,
 )
 import datetime
 import logging
@@ -337,6 +338,12 @@ class OutOfOfficeNoteSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "description", "is_active", "storage_url", "play_time"]
 
 
+class ClientBannerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClientBanner
+        fields = ["id", "banner", "hyperlink", "is_active", "banner_type"]
+
+
 class OrganizationSerializerCustom(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     token = serializers.SerializerMethodField()
@@ -353,6 +360,7 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
     onboarded = serializers.SerializerMethodField()
     onboarded_by = serializers.SerializerMethodField()
     auto_sent_after = serializers.SerializerMethodField()
+    banners = serializers.SerializerMethodField()
 
     def get_name(self, obj):
         return obj.name
@@ -413,6 +421,14 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
     def get_auto_sent_after(self, obj):
         return obj.auto_sent_after
 
+    def get_banners(self, obj):
+        try:
+            results = obj.client_banners.all()
+            return ClientBannerSerializer(results, many=True).data
+        except Exception as e:
+            results = {}
+        return results
+
     class Meta:
         model = Organization
         fields = [
@@ -431,6 +447,7 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
             "onboarded",
             "onboarded_by",
             "auto_sent_after",
+            "banners",
         ]
 
 
@@ -457,6 +474,7 @@ class ClientSerializer(serializers.ModelSerializer):
             "role",
             "organization",
             "onboarded",
+            "is_client_online",
         ]
 
 
