@@ -57,6 +57,9 @@ def find_next_open_close_times(office_hours, timezone_str):
                     # Office is currently open
                     is_currently_open = True
                     next_close_time = close_time
+                    logger.info(
+                        f"DEBUG: Currently open. Next close time: {next_close_time}"
+                    )  # Debug statement
                     return is_currently_open, next_open_time, next_close_time
 
                 if current_local_time < open_time and (
@@ -64,7 +67,11 @@ def find_next_open_close_times(office_hours, timezone_str):
                 ):
                     next_open_time = open_time
                     next_close_time = close_time
+                    logger.info(
+                        f"DEBUG: Found next open time: {next_open_time}, next close time: {next_close_time}"
+                    )  # Debug statement
 
+        # Move to the next day
         current_local_time += timedelta(days=1)
         current_local_time = current_local_time.replace(
             hour=0, minute=0, second=0, microsecond=0
