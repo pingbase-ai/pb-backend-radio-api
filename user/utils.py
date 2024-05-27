@@ -88,7 +88,7 @@ def find_next_open_close_times(office_hours, timezone_str):
             f"DEBUG: Moving to next day: {current_local_time}, weekday: {current_weekday}"
         )
 
-    return is_currently_open, next_open_time, next_close_timee
+    return is_currently_open, next_open_time, next_close_time
 
 
 def schedule_next_update(time_to_run, organization_id, action):
