@@ -3,14 +3,17 @@ from django.dispatch import receiver
 from django.db.models import F
 from dyte.models import DyteMeeting, DyteAuthToken
 from django.conf import settings
-from user.models import EndUser, Widget, User, OfficeHours, ClientBanner
+from user.models import EndUser, Widget, User, OfficeHours, ClientBanner, Client
 from django_q.tasks import schedule
 from datetime import timedelta
 from django.utils import timezone
 from .utils import LinkedIn, schedule_next_update_for_organization
-from pusher_channel_app.utils import publish_event_to_client
+from pusher_channel_app.utils import (
+    publish_event_to_client,
+)
 from .constants import BANNER_OOO_TEXT, BANNER_OOO_HYPERLINK_TEXT
 from django.core.cache import cache
+from django_q.models import Schedule
 
 import logging
 
@@ -184,3 +187,65 @@ def handle_office_hours_update(sender, instance, created, **kwargs):
 
     except Exception as e:
         logger.error(f"Error while scheduling office hours: {e}")
+
+
+@receiver(pre_save, sender=ClientBanner)
+def alert_banner_active_status(sender, instance, **kwargs):
+    if instance.pk:
+        old_instance = sender.objects.filter(pk=instance.pk).only("is_active").first()
+        if old_instance and old_instance.is_active != instance.is_active:
+
+            try:
+
+                # cancel any scheduled user status update
+                task_name = f"client_status_{client.organization.token}"
+                try:
+                    Schedule.objects.filter(name__startswith=f"{task_name}").delete()
+                except Exception as e:
+                    logger.error(f"Error while deleting existing tasks in signal: {e}")
+
+                # Send pusher notification
+                pusher_data_obj = {
+                    "source_event_type": "banner_status_change",
+                    "is_active": instance.is_active,
+                    "banner_type": instance.banner_type,
+                    "banner_id": instance.id,
+                }
+
+                publish_event_to_client(
+                    str(instance.organization.token),
+                    "private",
+                    "client-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(f"Error while sending notification to client: {e}")
+
+        return
+
+
+@receiver(pre_save, sender=Client)
+def alert_client_active_status(sender, instance, **kwargs):
+    if instance.pk:
+        old_instance = (
+            sender.objects.filter(pk=instance.pk).only("is_client_online").first()
+        )
+        if old_instance and old_instance.is_client_online != instance.is_client_online:
+
+            try:
+                pusher_data_obj = {
+                    "source_event_type": "client_status_change",
+                    "user_id": instance.user.id,
+                    "is_active": instance.is_client_online,
+                }
+
+                publish_event_to_client(
+                    str(instance.organization.token),
+                    "private",
+                    "client-event",
+                    pusher_data_obj,
+                )
+            except Exception as e:
+                logger.error(f"Error while sending notification to client: {e}")
+
+        return

@@ -235,3 +235,12 @@ def update_banner_status():
     organizations = Organization.objects.all()
     for organization in organizations:
         schedule_next_update_for_organization(organization)
+
+
+def update_active_status_for_client(client, is_active):
+    try:
+        client.is_active = is_active
+        client.save()
+    except Exception as e:
+        logger.error(f"Error while updating client status: {e}")
+        return False

@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from .utils import Mail, remove_spaces_from_text
+from .utils import Mail, remove_spaces_from_text, schedule_active_status_for_client
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import generics, status, views, permissions
 from django.conf import settings
@@ -70,6 +70,7 @@ from dyte.utils import replace_special_chars
 
 import logging
 import json
+import datetime
 
 User = get_user_model()
 logger = logging.getLogger("django")
@@ -1126,6 +1127,37 @@ class ExitEndUserView(CustomGenericAPIView):
 
         return Response(
             {"message": "EndUser exit event recorded"},
+            status=status.HTTP_200_OK,
+        )
+
+
+class ClientView(CustomGenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        user = request.user
+        data = request.data
+        client = user.client
+
+        # check if the office is open or not
+        active = data.get("active", False)
+        scheduled_time = data.get("scheduled_time", None)
+
+        try:
+            client.is_client_online = active
+            client.save()
+        except Exception as e:
+            logger.error(f"Error: {e}")
+
+        if scheduled_time:
+            scheduled_time = datetime.datetime.fromisoformat(scheduled_time)
+            try:
+                schedule_active_status_for_client(client, active, scheduled_time)
+            except Exception as e:
+                logger.error(f"Error: {e}")
+
+        return Response(
+            {"message": "Client status updated successfully"},
             status=status.HTTP_200_OK,
         )
 

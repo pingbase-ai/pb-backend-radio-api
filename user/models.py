@@ -222,6 +222,7 @@ class Client(CreatedModifiedModel):
     )
     role = models.CharField(max_length=200, choices=ROLE_CHOICES, default=STANDARD_USER)
     onboarded = models.BooleanField(default=False)
+    is_client_online = models.BooleanField(default=False)
 
     def __str__(self):
         return self.organization.name + " - " + self.user.email

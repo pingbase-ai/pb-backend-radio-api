@@ -323,3 +323,28 @@ def update_banner_status_for_organisation(organization_id, action="close"):
 
         if next_run:
             schedule_next_update(next_run, organization.id, next_action)
+
+
+def schedule_active_status_for_client(client, is_active, scheduled_time):
+    final_is_active = not is_active
+    task_name = (
+        f"client_status_{client.organization.token}_{client.user.id}_{final_is_active}"
+    )
+
+    # delete any existing tasks with the same name
+    try:
+        Schedule.objects.filter(name__startswith=f"{task_name}").delete()
+    except Exception as e:
+        logger.error(f"Error while deleting existing tasks: {e}")
+
+    try:
+        schedule(
+            "user.tasks.update_active_status_for_client",
+            client,
+            final_is_active,
+            name=task_name,
+            schedule_type="O",
+            next_run=scheduled_time,
+        )
+    except Exception as e:
+        logger.error(f"Error while scheduling task: {e}")
