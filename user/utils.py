@@ -76,6 +76,9 @@ def find_next_open_close_times(office_hours, timezone_str):
 
 
 def schedule_next_update(time_to_run, organization_id, action):
+    logger.info(
+        f"Scheduling next update for organization {organization_id} at {time_to_run}"
+    )
     task_name = f"Update Banner Status {organization_id} {action}"
     schedule(
         "user.utils.update_banner_status_for_organisation",
@@ -261,6 +264,9 @@ def schedule_next_update_for_organization(organization):
 
     is_open, next_open_time, next_close_time = find_next_open_close_times(
         office_hours, organization.timezone
+    )
+    logger.info(
+        f"Next open time: {next_open_time}, Next close time: {next_close_time}, is_open: {is_open}"
     )
     next_run = next_close_time if is_open else next_open_time
 
