@@ -30,40 +30,40 @@ def find_next_open_close_times(office_hours, timezone_str):
 
     current_weekday = current_local_time.weekday() + 1  # Monday is 1 and Sunday is 7
 
-    days_checked = 0
-    max_days_to_check = 7  # Check one full week
-
     next_open_time = None
     next_close_time = None
     is_currently_open = False
 
-    while days_checked < max_days_to_check:
-        for office_hour in office_hours:
-            if office_hour.weekday == current_weekday and office_hour.is_open:
+    for day_offset in range(7):  # Check the current day and the next 6 days
+        check_day = (current_weekday + day_offset - 1) % 7 + 1
+        day_time = current_local_time + timedelta(days=day_offset)
+        logger.info(
+            f"\nDEBUG: Checking day {check_day}, day_time={day_time}, current_weekday={current_weekday}, current_local_time={current_local_time} \n"
+        )
 
-                open_time = current_local_time.replace(
+        for office_hour in office_hours:
+            if office_hour.weekday == check_day and office_hour.is_open:
+                open_time = day_time.replace(
                     hour=office_hour.open_time.hour,
                     minute=office_hour.open_time.minute,
                     second=0,
                     microsecond=0,
                 )
-                close_time = current_local_time.replace(
+                close_time = day_time.replace(
                     hour=office_hour.close_time.hour,
                     minute=office_hour.close_time.minute,
                     second=0,
                     microsecond=0,
                 )
+
                 logger.info(
-                    f"OPEN TIME: {open_time} \t CLOSE TIME: {close_time} \t current_local_time: {current_local_time}"
+                    f"DEBUG: Checking day {check_day}, open_time={open_time}, close_time={close_time}"
                 )
 
                 if open_time <= current_local_time <= close_time:
                     # Office is currently open
                     is_currently_open = True
                     next_close_time = close_time
-                    logger.info(
-                        f"DEBUG: Currently open. Next close time: {next_close_time}"
-                    )  # Debug statement
                     return is_currently_open, next_open_time, next_close_time
 
                 if current_local_time < open_time and (
@@ -73,15 +73,7 @@ def find_next_open_close_times(office_hours, timezone_str):
                     next_close_time = close_time
                     logger.info(
                         f"DEBUG: Found next open time: {next_open_time}, next close time: {next_close_time}"
-                    )  # Debug statement
-
-        # Move to the next day
-        current_local_time += timedelta(days=1)
-        current_local_time = current_local_time.replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        current_weekday = (current_weekday % 7) + 1
-        days_checked += 1
+                    )
 
     return is_currently_open, next_open_time, next_close_time
 
