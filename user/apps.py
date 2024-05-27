@@ -1,9 +1,4 @@
 from django.apps import AppConfig
-from django_q.models import Schedule
-from django_q.tasks import schedule
-
-
-import datetime
 
 
 class UserConfig(AppConfig):
@@ -11,11 +6,16 @@ class UserConfig(AppConfig):
     name = "user"
 
     def ready(self) -> None:
+        from django_q.models import Schedule
+        from django_q.tasks import schedule
+        import datetime
+
         super().ready()
 
         import user.signals
 
         try:
+
             # Schedule the weekly banner update task if it does not already exist
             if not Schedule.objects.filter(name="Weekly Banner Update").exists():
                 # Calculate the next Sunday
