@@ -1,5 +1,5 @@
 from pusher import Pusher
-from .models import User, EndUser, Organization
+from .models import User, EndUser, Organization, Client
 from pusher_channel_app.utils import publish_event_to_user, publish_event_to_channel
 from .constants import PINGBASE_BOT
 from infra_utils.utils import encode_base64
@@ -237,8 +237,10 @@ def update_banner_status():
         schedule_next_update_for_organization(organization)
 
 
-def update_active_status_for_client(client, is_active):
+def update_active_status_for_client(clientId, is_active):
+    logger.info(f"Updating client status: {clientId} to {is_active}")
     try:
+        client = Client.objects.get(id=clientId)
         client.is_active = is_active
         client.save()
     except Exception as e:

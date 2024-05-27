@@ -327,9 +327,7 @@ def update_banner_status_for_organisation(organization_id, action="close"):
 
 def schedule_active_status_for_client(client, is_active, scheduled_time):
     final_is_active = not is_active
-    task_name = (
-        f"client_status_{client.organization.token}_{client.user.id}_{final_is_active}"
-    )
+    task_name = f"client_status_{str(client.organization.token)}_{client.user.id}_{final_is_active}"
 
     # delete any existing tasks with the same name
     try:
@@ -340,7 +338,7 @@ def schedule_active_status_for_client(client, is_active, scheduled_time):
     try:
         schedule(
             "user.tasks.update_active_status_for_client",
-            client,
+            client.id,
             final_is_active,
             name=task_name,
             schedule_type="O",

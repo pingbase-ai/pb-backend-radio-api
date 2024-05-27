@@ -198,7 +198,7 @@ def alert_banner_active_status(sender, instance, **kwargs):
             try:
 
                 # cancel any scheduled user status update
-                task_name = f"client_status_{client.organization.token}"
+                task_name = f"client_status_{instance.organization.token}"
                 try:
                     Schedule.objects.filter(name__startswith=f"{task_name}").delete()
                 except Exception as e:
