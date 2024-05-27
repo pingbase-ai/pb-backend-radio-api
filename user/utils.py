@@ -40,6 +40,7 @@ def find_next_open_close_times(office_hours, timezone_str):
     while days_checked < max_days_to_check:
         for office_hour in office_hours:
             if office_hour.weekday == current_weekday and office_hour.is_open:
+
                 open_time = current_local_time.replace(
                     hour=office_hour.open_time.hour,
                     minute=office_hour.open_time.minute,
@@ -51,6 +52,9 @@ def find_next_open_close_times(office_hours, timezone_str):
                     minute=office_hour.close_time.minute,
                     second=0,
                     microsecond=0,
+                )
+                logger.info(
+                    f"OPEN TIME: {open_time} \t CLOSE TIME: {close_time} \t current_local_time: {current_local_time}"
                 )
 
                 if open_time <= current_local_time <= close_time:
