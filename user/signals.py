@@ -204,6 +204,15 @@ def alert_banner_active_status(sender, instance, **kwargs):
                 except Exception as e:
                     logger.error(f"Error while deleting existing tasks in signal: {e}")
 
+                # toggle status for all the clients
+                try:
+                    if instance.is_active:
+                        instance.organization.clients.update(is_client_online=False)
+                    else:
+                        instance.organization.clients.update(is_client_online=True)
+                except Exception as e:
+                    logger.error(f"Error while updating client status in signal: {e}")
+
                 # Send pusher notification
                 pusher_data_obj = {
                     "source_event_type": "banner_status_change",
