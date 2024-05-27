@@ -18,13 +18,17 @@ logger = logging.getLogger("django")
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 
 
-@lru_cache(maxsize=1000)
+# @lru_cache(maxsize=1000)
 def get_local_time_from_utc(utc_time, timezone_str):
     local_tz = pytz.timezone(timezone_str)
     return utc_time.astimezone(local_tz)
 
 
 def find_next_open_close_times(office_hours, timezone_str):
+    for office_hour in office_hours:
+        logger.info(
+            f"\n\n\n\noffice_hour.weekday = {office_hour.weekday} and office_hour.is_open = {office_hour.is_open}\n\n\n\n"
+        )
     current_utc_time = datetime.now(UTC).replace(tzinfo=pytz.utc)
     current_local_time = get_local_time_from_utc(current_utc_time, timezone_str)
 
