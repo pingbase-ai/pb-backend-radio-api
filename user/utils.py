@@ -408,7 +408,11 @@ def get_open_close_time_current_day(organization):
     org_timezone = organization.timezone
     current_time = timezone.now()
     current_day = current_time.weekday() + 1
-    office_hours = organization.office_hours.get(weekday=current_day)
+    try:
+        office_hours = organization.office_hours.get(weekday=current_day)
+    except Exception as e:
+        logger.error(f"Error while fetching office hours: {e}")
+        return None, None, False
     is_currently_open = office_hours.is_open
     if not is_currently_open:
         return None, None, False
@@ -443,7 +447,7 @@ def bulk_update_active_status_for_clients(org_id, force_update=False):
             "user.utils.update_active_status_for_all_clients_auto",
             org_id,
             True,
-            name=task_name,
+            name=f"{task_name}_{True}",
             schedule_type="O",
             next_run=open_time,
         )
@@ -453,7 +457,7 @@ def bulk_update_active_status_for_clients(org_id, force_update=False):
             "user.utils.update_active_status_for_all_clients_auto",
             org_id,
             False,
-            name=task_name,
+            name=f"{task_name}_{False}",
             schedule_type="O",
             next_run=close_time,
         )
