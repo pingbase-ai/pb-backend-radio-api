@@ -441,26 +441,29 @@ def bulk_update_active_status_for_clients(org_id, force_update=False):
     except Exception as e:
         logger.error(f"Error while deleting existing tasks: {e}")
 
+    current_time = timezone.now()
     try:
         # Open Time
-        schedule(
-            "user.utils.update_active_status_for_all_clients_auto",
-            org_id,
-            True,
-            name=f"{task_name}_{True}",
-            schedule_type="O",
-            next_run=open_time,
-        )
+        if open_time and open_time >= current_time:
+            schedule(
+                "user.utils.update_active_status_for_all_clients_auto",
+                org_id,
+                True,
+                name=f"{task_name}_{True}",
+                schedule_type="O",
+                next_run=open_time,
+            )
 
         # Close Time
-        schedule(
-            "user.utils.update_active_status_for_all_clients_auto",
-            org_id,
-            False,
-            name=f"{task_name}_{False}",
-            schedule_type="O",
-            next_run=close_time,
-        )
+        if close_time and close_time >= current_time:
+            schedule(
+                "user.utils.update_active_status_for_all_clients_auto",
+                org_id,
+                False,
+                name=f"{task_name}_{False}",
+                schedule_type="O",
+                next_run=close_time,
+            )
     except Exception as e:
         logger.error(f"Error while scheduling task with task_name: {task_name} : {e}")
 
