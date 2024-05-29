@@ -256,7 +256,7 @@ def update_active_status_for_all_client_main():
 
     for org in orgs:
         try:
-            bulk_update_active_status_for_clients(org)
+            bulk_update_active_status_for_clients(org.id)
         except Exception as e:
             logger.error(
                 f"Error while running update_active_status_for_all_client_main for {org}, error: {e}"
