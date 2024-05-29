@@ -14,10 +14,58 @@ from pusher_channel_app.utils import (
 from .constants import BANNER_OOO_TEXT, BANNER_OOO_HYPERLINK_TEXT
 from django.core.cache import cache
 from django_q.models import Schedule
+from events.models import Event
+from user.constants import (
+    COMPLETED,
+    SKIPPED,
+    CHECKIN_SKIPPED,
+    CHECKIN_COMPLETED,
+    NOT_APPLICABLE,
+)
+
+from home.event_types import SUCCESS, MANUAL
 
 import logging
 
 logger = logging.getLogger("django")
+
+
+@receiver(pre_save, sender=EndUser)
+def watch_check_in_status(sender, instance, **kwargs):
+    if instance.pk:
+        old_instance = (
+            sender.objects.filter(pk=instance.pk).only("check_in_status").first()
+        )
+        if old_instance and old_instance.check_in_status != instance.check_in_status:
+            try:
+                check_in_status = instance.check_in_status
+                if check_in_status == COMPLETED or check_in_status == SKIPPED:
+                    # Create an Event for the check-in status change
+                    event_type = (
+                        CHECKIN_COMPLETED
+                        if check_in_status == COMPLETED
+                        else CHECKIN_SKIPPED
+                    )
+                    event = Event.create_event_async(
+                        event_type=event_type,
+                        source_user_id=None,
+                        destination_user_id=None,
+                        status=SUCCESS,
+                        duration=0,
+                        frontend_screen="NA",
+                        agent_name=None,
+                        initiated_by=MANUAL,
+                        interaction_type=NOT_APPLICABLE,
+                        interaction_id=None,
+                        is_parent=False,
+                        storage_url=None,
+                        organization=instance.organization,
+                    )
+
+            except Exception as e:
+                logger.error(f"Error while creating an event for check-in status: {e}")
+
+        return
 
 
 @receiver(post_save, sender=EndUser)

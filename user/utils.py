@@ -7,6 +7,7 @@ from datetime import timedelta, datetime, UTC
 from user.models import User, Organization
 from pusher_channel_app.utils import publish_event_to_client
 from functools import lru_cache
+from user.constants import COMPLETED, PENDING, SKIPPED, NOT_APPLICABLE
 
 
 import pytz
@@ -18,7 +19,17 @@ logger = logging.getLogger("django")
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 
 
-# @lru_cache(maxsize=1000)
+def validate_check_in_status(
+    next_check_in_status: str, current_check_in_status: str
+) -> bool:
+    if current_check_in_status == PENDING:
+        if next_check_in_status == COMPLETED:
+            return True
+        return False
+    return False
+
+
+@lru_cache(maxsize=1000)
 def get_local_time_from_utc(utc_time, timezone_str):
     local_tz = pytz.timezone(timezone_str)
     return utc_time.astimezone(local_tz)

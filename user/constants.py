@@ -3,6 +3,17 @@ PINGBASE_BOT = "Pingbase Bot"
 BANNER_OOO_TEXT = "Your status has been automatically set to busy as the time is now outside of team office hours. To receive calls, change your status to active:"
 BANNER_OOO_HYPERLINK_TEXT = "Change"
 
+# CheckIn Feature variables
+SKIPPED = "skipped"
+NOT_APPLICABLE = "not_applicable"
+COMPLETED = "completed"
+PENDING = "pending"
+
+# CheckIn events
+
+CHECKIN_SKIPPED = "Check-In Skipped"
+CHECKIN_COMPLETED = "Check-In Completed"
+
 
 # Function constants
 def get_integration_code_snippet(token: str) -> str:

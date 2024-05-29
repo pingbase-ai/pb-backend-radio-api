@@ -8,7 +8,13 @@ from django.contrib.auth.models import (
 )
 from rest_framework_simplejwt.tokens import RefreshToken
 from infra_utils.models import CreatedModifiedModel
-from django.contrib.auth.models import AbstractUser
+from user.constants import (
+    SKIPPED,
+    NOT_APPLICABLE,
+    COMPLETED,
+    PENDING,
+)
+
 
 from infra_utils.utils import generate_random_string
 
@@ -240,6 +246,13 @@ class EndUser(CreatedModifiedModel):
         (HIGH, "High"),
     ]
 
+    CHECK_IN_STATUS_CHOICES = [
+        (SKIPPED, "Skipped"),
+        (NOT_APPLICABLE, "Not Applicable"),
+        (COMPLETED, "Completed"),
+        (PENDING, "Pending"),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="end_user")
     organization = models.ForeignKey(
         Organization, on_delete=models.DO_NOTHING, related_name="end_users"
@@ -255,6 +268,11 @@ class EndUser(CreatedModifiedModel):
     country = models.CharField(max_length=200, null=True, blank=True)
     welcome_note_sent = models.BooleanField(default=False)
     is_new = models.BooleanField(default=False, blank=True, null=True)
+
+    # CheckIn Feature related fields
+    check_in_status = models.CharField(
+        max_length=200, choices=CHECK_IN_STATUS_CHOICES, default=PENDING
+    )
 
     objects = EndUserManager()
 
@@ -426,3 +444,15 @@ class ClientBanner(CreatedModifiedModel):
 
     def __str__(self):
         return self.organization.name
+
+
+class CheckInFeature(CreatedModifiedModel):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="check_in_feature"
+    )
+    master_switch = models.BooleanField(default=True)
+    skip_switch = models.BooleanField(default=False)
+    support_email = models.EmailField(max_length=255, blank=True, default="")
+
+    def __str__(self):
+        return self.organization.name + " - " + self.support_email
