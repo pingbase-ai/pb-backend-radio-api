@@ -383,3 +383,88 @@ def schedule_active_status_for_client(client, is_active, scheduled_time):
         )
     except Exception as e:
         logger.error(f"Error while scheduling task: {e}")
+
+
+@lru_cache(maxsize=1000)
+def convert_time_to_utc(time_field, timezone_str):
+    # Get the current date and the provided time
+    today = timezone.now().date()
+    local_time = datetime.combine(today, time_field)
+
+    # Parse the timezone string
+    local_tz = pytz.timezone(timezone_str)
+
+    # Localize the datetime object to the given timezone
+    local_dt = local_tz.localize(local_time, is_dst=None)
+
+    # Convert the localized datetime to UTC
+    utc_dt = local_dt.astimezone(pytz.utc)
+
+    return utc_dt
+
+
+@lru_cache(maxsize=1000)
+def get_open_close_time_current_day(organization):
+    org_timezone = organization.timezone
+    current_time = timezone.now()
+    current_day = current_time.weekday() + 1
+    office_hours = organization.office_hours.get(weekday=current_day)
+    is_currently_open = office_hours.is_open
+    if not is_currently_open:
+        return None, None, False
+    open_time = convert_time_to_utc(office_hours.open_time, org_timezone)
+    close_time = convert_time_to_utc(office_hours.close_time, org_timezone)
+    return open_time, close_time, is_currently_open
+
+
+def bulk_update_active_status_for_clients(org_id, force_update=False):
+    task_name = f"bulk_client_status_{org_id}"
+    organization = Organization.objects.get(id=org_id)
+
+    open_time, close_time, is_open = get_open_close_time_current_day(organization)
+    if not is_open:
+        return
+
+    try:
+        if force_update:
+            Schedule.objects.filter(name__startswith=f"{task_name}").delete()
+        else:
+            already_scheduled_count = Schedule.objects.filter(
+                name__startswith=f"{task_name}"
+            ).count()
+            if already_scheduled_count >= 2:
+                return
+    except Exception as e:
+        logger.error(f"Error while deleting existing tasks: {e}")
+
+    try:
+        # Open Time
+        schedule(
+            "user.utils.update_active_status_for_all_clients_auto",
+            org_id,
+            True,
+            name=task_name,
+            schedule_type="O",
+            next_run=open_time,
+        )
+
+        # Close Time
+        schedule(
+            "user.utils.update_active_status_for_all_clients_auto",
+            org_id,
+            False,
+            name=task_name,
+            schedule_type="O",
+            next_run=close_time,
+        )
+    except Exception as e:
+        logger.error(f"Error while scheduling task with task_name: {task_name} : {e}")
+
+
+def update_active_status_for_all_clients_auto(org_id, is_active):
+    organization = Organization.objects.get(id=org_id)
+
+    try:
+        clients = organization.clients.all().update(is_client_online=is_active)
+    except Exception as e:
+        logger.error(f"Error while updating bulk client status: {e}")

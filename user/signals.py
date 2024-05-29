@@ -7,7 +7,11 @@ from user.models import EndUser, Widget, User, OfficeHours, ClientBanner, Client
 from django_q.tasks import schedule
 from datetime import timedelta
 from django.utils import timezone
-from .utils import LinkedIn, schedule_next_update_for_organization
+from .utils import (
+    LinkedIn,
+    schedule_next_update_for_organization,
+    bulk_update_active_status_for_clients,
+)
 from pusher_channel_app.utils import (
     publish_event_to_client,
 )
@@ -228,6 +232,7 @@ def handle_office_hours_update(sender, instance, created, **kwargs):
             except Exception as e:
                 logger.error(f"Error while creating new ClientBanner: {e}")
 
+        bulk_update_active_status_for_clients(instance.organization.id, True)
         cache_key = f"schedule_update_{instance.organization.id}"
         if not cache.get(cache_key):
             schedule_next_update_for_organization(instance.organization)
