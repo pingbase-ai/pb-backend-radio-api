@@ -7,6 +7,7 @@ from datetime import timedelta, datetime, UTC
 from user.models import User, Organization
 from pusher_channel_app.utils import publish_event_to_client
 from functools import lru_cache
+from user.constants import COMPLETED, PENDING, SKIPPED, NOT_APPLICABLE
 
 
 import pytz
@@ -18,6 +19,16 @@ logger = logging.getLogger("django")
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 
 
+def validate_check_in_status(
+    next_check_in_status: str, current_check_in_status: str
+) -> bool:
+    if current_check_in_status == PENDING:
+        if next_check_in_status == COMPLETED:
+            return True
+        return False
+    return False
+
+
 @lru_cache(maxsize=1000)
 def get_local_time_from_utc(utc_time, timezone_str):
     local_tz = pytz.timezone(timezone_str)
@@ -25,57 +36,80 @@ def get_local_time_from_utc(utc_time, timezone_str):
 
 
 def find_next_open_close_times(office_hours, timezone_str):
+    for office_hour in office_hours:
+        logger.info(
+            f"\n\n\n\noffice_hour.weekday = {office_hour.weekday} and office_hour.is_open = {office_hour.is_open}\n\n\n\n"
+        )
     current_utc_time = datetime.now(UTC).replace(tzinfo=pytz.utc)
     current_local_time = get_local_time_from_utc(current_utc_time, timezone_str)
 
     current_weekday = current_local_time.weekday() + 1  # Monday is 1 and Sunday is 7
 
-    days_checked = 0
-    max_days_to_check = 7  # Check one full week
-
     next_open_time = None
     next_close_time = None
+    is_currently_open = False
 
-    while days_checked < max_days_to_check:
+    for day_offset in range(7):  # Check the current day and the next 6 days
+        check_day = (current_weekday + day_offset - 1) % 7 + 1
+        day_time = current_local_time + timedelta(days=day_offset)
+
         for office_hour in office_hours:
-            if office_hour.weekday == current_weekday:
-                open_time = current_local_time.replace(
+            logger.info(
+                f"\n\noffice_hour.weekday = {office_hour.weekday} and office_hour.is_open = {office_hour.is_open}\n\n"
+            )
+            if office_hour.weekday == check_day and office_hour.is_open:
+                open_time = day_time.replace(
                     hour=office_hour.open_time.hour,
                     minute=office_hour.open_time.minute,
                     second=0,
                     microsecond=0,
                 )
-                close_time = current_local_time.replace(
+                close_time = day_time.replace(
                     hour=office_hour.close_time.hour,
                     minute=office_hour.close_time.minute,
                     second=0,
                     microsecond=0,
                 )
 
+                logger.info(
+                    f"DEBUG: Checking day {check_day}, open_time={open_time}, close_time={close_time}"
+                )
+
                 if open_time <= current_local_time <= close_time:
-                    return True, open_time, close_time
+                    # Office is currently open
+                    is_currently_open = True
+                    next_close_time = close_time
+                    logger.info(
+                        f"DEBUG: Currently open. Next close time: {next_close_time}"
+                    )
+                    return is_currently_open, next_open_time, next_close_time
 
                 if current_local_time < open_time and (
                     next_open_time is None or open_time < next_open_time
                 ):
                     next_open_time = open_time
-
-                if current_local_time < close_time and (
-                    next_close_time is None or close_time < next_close_time
-                ):
                     next_close_time = close_time
+                    logger.info(
+                        f"DEBUG: Found next open time: {next_open_time}, next close time: {next_close_time}"
+                    )
 
+        # Move to the next day
         current_local_time += timedelta(days=1)
         current_local_time = current_local_time.replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         current_weekday = (current_weekday % 7) + 1
-        days_checked += 1
+        logger.info(
+            f"DEBUG: Moving to next day: {current_local_time}, weekday: {current_weekday}"
+        )
 
-    return False, next_open_time, next_close_time
+    return is_currently_open, next_open_time, next_close_time
 
 
 def schedule_next_update(time_to_run, organization_id, action):
+    logger.info(
+        f"Scheduling next update for organization {organization_id} at {time_to_run}"
+    )
     task_name = f"Update Banner Status {organization_id} {action}"
     schedule(
         "user.utils.update_banner_status_for_organisation",
@@ -262,6 +296,9 @@ def schedule_next_update_for_organization(organization):
     is_open, next_open_time, next_close_time = find_next_open_close_times(
         office_hours, organization.timezone
     )
+    logger.info(
+        f"Next open time: {next_open_time}, Next close time: {next_close_time}, is_open: {is_open}"
+    )
     next_run = next_close_time if is_open else next_open_time
 
     if next_run:
@@ -327,9 +364,7 @@ def update_banner_status_for_organisation(organization_id, action="close"):
 
 def schedule_active_status_for_client(client, is_active, scheduled_time):
     final_is_active = not is_active
-    task_name = (
-        f"client_status_{client.organization.token}_{client.user.id}_{final_is_active}"
-    )
+    task_name = f"client_status_{str(client.organization.token)}_{client.user.id}_{final_is_active}"
 
     # delete any existing tasks with the same name
     try:
@@ -340,7 +375,7 @@ def schedule_active_status_for_client(client, is_active, scheduled_time):
     try:
         schedule(
             "user.tasks.update_active_status_for_client",
-            client,
+            client.id,
             final_is_active,
             name=task_name,
             schedule_type="O",

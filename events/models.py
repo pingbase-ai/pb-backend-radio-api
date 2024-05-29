@@ -58,6 +58,7 @@ class Event(models.Model):
         (LOGGED_IN, "Logged in"),
         (LEFT_WEBAPP, "Left webapp"),
         (DECLINED_CALL, "Declined call"),
+        # There are more event_types
     )
 
     event_type = models.CharField(max_length=255, choices=event_types)

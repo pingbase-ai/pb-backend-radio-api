@@ -13,7 +13,12 @@ from rest_framework.response import Response
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from .utils import Mail, remove_spaces_from_text, schedule_active_status_for_client
+from .utils import (
+    Mail,
+    remove_spaces_from_text,
+    schedule_active_status_for_client,
+    validate_check_in_status,
+)
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import generics, status, views, permissions
 from django.conf import settings
@@ -33,6 +38,7 @@ from .models import (
     OutOfOfficeNote,
     Widget,
     EndUser,
+    CheckInFeature,
 )
 from pusher_channel_app.models import PusherChannelApp
 from .serializers import (
@@ -48,6 +54,7 @@ from .serializers import (
     ClientMemberSerializer,
     CustomEndUserSerializer,
     FeatureFlagConnectSerializer,
+    CheckInFeatureSerializer,
 )
 from infra_utils.views import (
     CustomAPIView,
@@ -920,6 +927,25 @@ class OnboardingView(CustomAPIView):
                     {"message": "Integration not done"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+        elif type == "check_in_feature":
+            checkInFeatureObj = CheckInFeature.objects.filter(
+                organization=organization
+            ).first()
+            if checkInFeatureObj:
+                checkInFeatureObj.master_switch = data.get("master_switch")
+                checkInFeatureObj.skip_switch = data.get("skip_switch", False)
+                checkInFeatureObj.support_email = data.get("support_email")
+                checkInFeatureObj.save()
+                return Response(
+                    {"message": "CheckIn feature updated"}, status=status.HTTP_200_OK
+                )
+
+            serializer = CheckInFeatureSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save(organization=organization)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(
                 {"message": "Invalid onboarding type"},
@@ -1484,7 +1510,7 @@ class EndUserList(CustomGenericAPIListView):
     def get(self, request, *args, **kwargs):
         user = request.user
 
-        client = Client.objects.filter(user=user).first()
+        client = user.client
         query = request.query_params.get("search", None)
 
         if not client:
@@ -1516,6 +1542,40 @@ class EndUserList(CustomGenericAPIListView):
                 {"message": "Something went wrong"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    def put(self, request, *args, **kwargs):
+        user = request.user
+        data = request.data
+        end_user_id = data.get("end_user_id")
+
+        check_in_status = data.get("check_in_status")
+        try:
+            end_user = User.objects.get(id=end_user_id).end_user
+        except User.DoesNotExist as e:
+            logger.error(f"Error: {e}")
+            return Response(
+                {"message": "EndUser doesn't exist"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        client = user.client
+        # check if the client organization is the same as the end_user organization
+        if client.organization != end_user.organization:
+            return Response({"message": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+        is_request_valid = validate_check_in_status(
+            check_in_status, end_user.check_in_status
+        )
+        if is_request_valid:
+            end_user.check_in_status = check_in_status
+            end_user.save()
+            return Response(
+                {"message": "Check in status updated successfully"},
+                status=status.HTTP_200_OK,
+            )
+        return Response(
+            {"message": "Invalid check in status"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class UserList(generics.ListAPIView):

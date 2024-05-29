@@ -19,6 +19,7 @@ from .models import (
     Organization,
     FeatureFlagConnect,
     ClientBanner,
+    CheckInFeature,
 )
 import datetime
 import logging
@@ -565,3 +566,9 @@ class FeatureFlagConnectSerializer(serializers.ModelSerializer):
     class Meta:
         model = FeatureFlagConnect
         fields = ["feature_name", "enabled"]
+
+
+class CheckInFeatureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CheckInFeature
+        fields = ["master_switch", "skip_switch", "support_email"]
