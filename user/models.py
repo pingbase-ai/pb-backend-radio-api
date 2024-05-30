@@ -447,7 +447,7 @@ class ClientBanner(CreatedModifiedModel):
 
 
 class CheckInFeature(CreatedModifiedModel):
-    organization = models.ForeignKey(
+    organization = models.OneToOneField(
         Organization, on_delete=models.CASCADE, related_name="check_in_feature"
     )
     master_switch = models.BooleanField(default=True)

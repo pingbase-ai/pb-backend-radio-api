@@ -25,6 +25,7 @@ from user.constants import (
     CHECKIN_SKIPPED,
     CHECKIN_COMPLETED,
     NOT_APPLICABLE,
+    CHECKIN_NOT_APPLICABLE,
 )
 
 from home.event_types import SUCCESS, MANUAL
@@ -43,13 +44,20 @@ def watch_check_in_status(sender, instance, **kwargs):
         if old_instance and old_instance.check_in_status != instance.check_in_status:
             try:
                 check_in_status = instance.check_in_status
-                if check_in_status == COMPLETED or check_in_status == SKIPPED:
+                if (
+                    check_in_status == COMPLETED
+                    or check_in_status == SKIPPED
+                    or check_in_status == NOT_APPLICABLE
+                ):
                     # Create an Event for the check-in status change
-                    event_type = (
-                        CHECKIN_COMPLETED
-                        if check_in_status == COMPLETED
-                        else CHECKIN_SKIPPED
-                    )
+                    event_type = None
+                    if check_in_status == COMPLETED:
+                        event_type = CHECKIN_COMPLETED
+                    elif check_in_status == SKIPPED:
+                        event_type = CHECKIN_SKIPPED
+                    else:
+                        event_type = CHECKIN_NOT_APPLICABLE
+
                     event = Event.create_event_async(
                         event_type=event_type,
                         source_user_id=None,

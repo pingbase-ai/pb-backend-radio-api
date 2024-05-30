@@ -13,6 +13,7 @@ from .models import (
     Widget,
     FeatureFlagConnect,
     ClientBanner,
+    CheckInFeature,
 )
 
 # Register your models here.
@@ -84,3 +85,8 @@ class FeatureFlagAdmin(ModelAdmin):
 @admin.register(ClientBanner)
 class ClientBannerAdmin(ModelAdmin):
     list_display = ("organization", "banner", "is_active", "banner_type")
+
+
+@admin.register(CheckInFeature)
+class CheckInFeatureAdmin(ModelAdmin):
+    list_display = ("organization", "master_switch", "skip_switch", "support_email")
