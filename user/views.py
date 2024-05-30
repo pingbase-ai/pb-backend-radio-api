@@ -1125,7 +1125,6 @@ class InitEndUserView(generics.GenericAPIView):
             widgetAvatarNumber = int("".join(filter(str.isdigit, widgetAvatar)))
 
             teamName = organization.team_name
-
             return Response(
                 {
                     "organization": orgName,
@@ -1140,7 +1139,7 @@ class InitEndUserView(generics.GenericAPIView):
                     ).data,
                     "check_in_feature": (
                         CheckInFeatureSerializer(organization.check_in_feature).data
-                        if organization.check_in_feature
+                        if hasattr(organization, "check_in_feature")
                         else None
                     ),
                 },
