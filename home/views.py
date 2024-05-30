@@ -52,6 +52,8 @@ from dyte.models import DyteMeeting, DyteAuthToken
 from events.models import Event
 from user.serializers import CustomEndUserSerializer
 from .utils import convert_to_date, convert_webm_to_mp3
+from user.constants import PINGBASE_BOT, PENDING
+
 
 import logging
 import datetime
@@ -1378,9 +1380,10 @@ class CalendlyWebhookAPIView(CustomAPIView):
                 created_at = data.get("created_at", None)
                 endUserEmail = payload.get("email")
                 user = User.objects.filter(email=endUserEmail).first()
-                endUser = user.end_user
                 if not user:
                     return Response({"status": status.HTTP_200_OK})
+
+                endUser = user.end_user
                 title = scheduled_event.get("name")
                 start_time = scheduled_event.get("start_time")
                 description = scheduled_event.get("meeting_notes_plain")
@@ -1404,6 +1407,31 @@ class CalendlyWebhookAPIView(CustomAPIView):
                     organization=organization,
                     date=required_date,
                 )
+
+                if (
+                    endUser.check_in_status == PENDING
+                    and organization.check_in_feature.master_switch
+                ):
+                    # send a pusher notification to the endUser regarding the meeting
+                    pusher_data_obj = {
+                        "source_event_type": "meeting_scheduled",
+                        "id": str(meeting.meeting_id),
+                        "sender": PINGBASE_BOT,
+                        "meeting_start_time": str(meeting.start_time),
+                    }
+
+                    try:
+                        publish_event_to_user(
+                            str(organization.token),
+                            "private",
+                            encode_base64(f"{user.id}"),
+                            "client-event",
+                            pusher_data_obj,
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Error while publishing meeting scheduled event: {e}"
+                        )
 
             return Response({"status": status.HTTP_200_OK})
         except Exception as e:

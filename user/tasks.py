@@ -6,7 +6,10 @@ from infra_utils.utils import encode_base64
 from events.models import Event
 from home.event_types import WE_SENT_AUDIO_NOTE, SUCCESS, AUTOMATIC, VOICE_NOTE
 from django_q.tasks import async_task
-from .utils import schedule_next_update_for_organization
+from .utils import (
+    schedule_next_update_for_organization,
+    bulk_update_active_status_for_clients,
+)
 
 import uuid
 import logging
@@ -237,12 +240,24 @@ def update_banner_status():
         schedule_next_update_for_organization(organization)
 
 
-def update_active_status_for_client(clientId, is_active):
-    logger.info(f"Updating client status: {clientId} to {is_active}")
+def update_active_status_for_client(client_id, is_active):
+    logger.info(f"Updating client status: {client_id} to {is_active}")
     try:
-        client = Client.objects.get(id=clientId)
+        client = Client.objects.get(id=client_id)
         client.is_client_online = is_active
         client.save()
     except Exception as e:
         logger.error(f"Error while updating client status: {e}")
         return False
+
+
+def update_active_status_for_all_client_main():
+    orgs = Organization.objects.all()
+
+    for org in orgs:
+        try:
+            bulk_update_active_status_for_clients(org.id)
+        except Exception as e:
+            logger.error(
+                f"Error while running update_active_status_for_all_client_main for {org}, error: {e}"
+            )

@@ -13,6 +13,7 @@ PENDING = "pending"
 
 CHECKIN_SKIPPED = "Check-In Skipped"
 CHECKIN_COMPLETED = "Check-In Completed"
+CHECKIN_NOT_APPLICABLE = "Check-In Not Applicable"
 
 
 # Function constants

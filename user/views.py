@@ -8,6 +8,7 @@ from .serializers import (
     UserSerializer,
     LogoutSerializer,
     EndUserListSerializer,
+    CheckInFeatureSerializer,
 )
 from rest_framework.response import Response
 from django.contrib.sites.shortcuts import get_current_site
@@ -29,6 +30,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from rest_framework.decorators import api_view
 from rest_framework.reverse import reverse
 from home.utils import upload_to_azure_blob
+from home.models import Meeting
 from .models import (
     Organization,
     Client,
@@ -1034,6 +1036,10 @@ class CreateEndUserView(CustomGenericAPIView):
 
         is_new = request.data.get("is_new")
         if user:
+            current_timestamp = timezone.now()
+            end_user_meetings = Meeting.objects.filter(
+                organizer=user, start_time__gte=current_timestamp
+            )
             sessions = EndUserSession.objects.filter(
                 end_user=user.end_user, organization=organization
             ).count()
@@ -1057,6 +1063,8 @@ class CreateEndUserView(CustomGenericAPIView):
                     "message": "EndUser already exists",
                     "sessions": sessions,
                     "is_new": endUser.is_new,
+                    "check_in_status": endUser.check_in_status,
+                    "end_user_meetings": end_user_meetings.count(),
                 },
                 status=status.HTTP_200_OK,
             )
@@ -1081,6 +1089,8 @@ class CreateEndUserView(CustomGenericAPIView):
                     "id": end_user.user.id,
                     "sessions": 1,
                     "is_new": end_user.is_new,
+                    "check_in_status": endUser.check_in_status,
+                    "end_user_meetings": 0,
                 },
                 status=status.HTTP_201_CREATED,
             )
@@ -1115,7 +1125,6 @@ class InitEndUserView(generics.GenericAPIView):
             widgetAvatarNumber = int("".join(filter(str.isdigit, widgetAvatar)))
 
             teamName = organization.team_name
-
             return Response(
                 {
                     "organization": orgName,
@@ -1128,6 +1137,11 @@ class InitEndUserView(generics.GenericAPIView):
                     "features": FeatureFlagConnectSerializer(
                         organization.feature_flags_connect.all(), many=True
                     ).data,
+                    "check_in_feature": (
+                        CheckInFeatureSerializer(organization.check_in_feature).data
+                        if hasattr(organization, "check_in_feature")
+                        else None
+                    ),
                 },
                 status=status.HTTP_200_OK,
             )

@@ -7,7 +7,11 @@ from user.models import EndUser, Widget, User, OfficeHours, ClientBanner, Client
 from django_q.tasks import schedule
 from datetime import timedelta
 from django.utils import timezone
-from .utils import LinkedIn, schedule_next_update_for_organization
+from .utils import (
+    LinkedIn,
+    schedule_next_update_for_organization,
+    bulk_update_active_status_for_clients,
+)
 from pusher_channel_app.utils import (
     publish_event_to_client,
 )
@@ -21,6 +25,7 @@ from user.constants import (
     CHECKIN_SKIPPED,
     CHECKIN_COMPLETED,
     NOT_APPLICABLE,
+    CHECKIN_NOT_APPLICABLE,
 )
 
 from home.event_types import SUCCESS, MANUAL
@@ -39,13 +44,20 @@ def watch_check_in_status(sender, instance, **kwargs):
         if old_instance and old_instance.check_in_status != instance.check_in_status:
             try:
                 check_in_status = instance.check_in_status
-                if check_in_status == COMPLETED or check_in_status == SKIPPED:
+                if (
+                    check_in_status == COMPLETED
+                    or check_in_status == SKIPPED
+                    or check_in_status == NOT_APPLICABLE
+                ):
                     # Create an Event for the check-in status change
-                    event_type = (
-                        CHECKIN_COMPLETED
-                        if check_in_status == COMPLETED
-                        else CHECKIN_SKIPPED
-                    )
+                    event_type = None
+                    if check_in_status == COMPLETED:
+                        event_type = CHECKIN_COMPLETED
+                    elif check_in_status == SKIPPED:
+                        event_type = CHECKIN_SKIPPED
+                    else:
+                        event_type = CHECKIN_NOT_APPLICABLE
+
                     event = Event.create_event_async(
                         event_type=event_type,
                         source_user_id=None,
@@ -228,6 +240,7 @@ def handle_office_hours_update(sender, instance, created, **kwargs):
             except Exception as e:
                 logger.error(f"Error while creating new ClientBanner: {e}")
 
+        bulk_update_active_status_for_clients(instance.organization.id, True)
         cache_key = f"schedule_update_{instance.organization.id}"
         if not cache.get(cache_key):
             schedule_next_update_for_organization(instance.organization)
