@@ -1138,9 +1138,11 @@ class InitEndUserView(generics.GenericAPIView):
                     "features": FeatureFlagConnectSerializer(
                         organization.feature_flags_connect.all(), many=True
                     ).data,
-                    "check_in_feature": CheckInFeatureSerializer(
-                        organization.check_in_feature
-                    ).data,
+                    "check_in_feature": (
+                        CheckInFeatureSerializer(organization.check_in_feature).data
+                        if organization.check_in_feature
+                        else None
+                    ),
                 },
                 status=status.HTTP_200_OK,
             )
