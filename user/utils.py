@@ -403,7 +403,7 @@ def convert_time_to_utc(time_field, timezone_str):
     return utc_dt
 
 
-@lru_cache(maxsize=1000)
+# @lru_cache(maxsize=1000)
 def get_open_close_time_current_day(organization):
     org_timezone = organization.timezone
     current_time = timezone.now()
