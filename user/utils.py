@@ -424,8 +424,12 @@ def get_open_close_time_current_day(organization):
 def bulk_update_active_status_for_clients(org_id, force_update=False):
     task_name = f"bulk_client_status_{org_id}"
     organization = Organization.objects.get(id=org_id)
+    current_time = timezone.now()
 
     open_time, close_time, is_open = get_open_close_time_current_day(organization)
+    logger.info(
+        f"\n\n task_name: {task_name}, open_time: {open_time}, close_time: {close_time}, is_open: {is_open}, current_time: {current_time} \n\n"
+    )
     if not is_open:
         return
 
@@ -437,11 +441,13 @@ def bulk_update_active_status_for_clients(org_id, force_update=False):
                 name__startswith=f"{task_name}"
             ).count()
             if already_scheduled_count >= 2:
+                logger.info(
+                    f"Task {task_name} is already scheduled, already_scheduled_count: {already_scheduled_count}"
+                )
                 return
     except Exception as e:
         logger.error(f"Error while deleting existing tasks: {e}")
 
-    current_time = timezone.now()
     try:
         # Open Time
         if open_time and open_time >= current_time:
