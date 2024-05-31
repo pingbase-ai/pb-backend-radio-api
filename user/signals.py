@@ -3,7 +3,15 @@ from django.dispatch import receiver
 from django.db.models import F
 from dyte.models import DyteMeeting, DyteAuthToken
 from django.conf import settings
-from user.models import EndUser, Widget, User, OfficeHours, ClientBanner, Client
+from user.models import (
+    EndUser,
+    Widget,
+    User,
+    OfficeHours,
+    ClientBanner,
+    Client,
+    CheckInFeature,
+)
 from django_q.tasks import schedule
 from datetime import timedelta
 from django.utils import timezone
@@ -12,9 +20,7 @@ from .utils import (
     schedule_next_update_for_organization,
     bulk_update_active_status_for_clients,
 )
-from pusher_channel_app.utils import (
-    publish_event_to_client,
-)
+from pusher_channel_app.utils import publish_event_to_client, publish_event_to_channel
 from .constants import BANNER_OOO_TEXT, BANNER_OOO_HYPERLINK_TEXT
 from django.core.cache import cache
 from django_q.models import Schedule
@@ -319,3 +325,24 @@ def alert_client_active_status(sender, instance, **kwargs):
                 logger.error(f"Error while sending notification to client: {e}")
 
         return
+
+
+@receiver(post_save, sender=CheckInFeature)
+def check_in_feature_updated(sender, instance, created, **kwargs):
+    if not created:
+        try:
+            pusher_data_obj = {
+                "source_event_type": "check_in_feature_status_change",
+                "master_switch": instance.master_switch,
+                "skip_switch": instance.skip_switch,
+                "support_email": instance.support_email,
+            }
+
+            publish_event_to_channel(
+                str(instance.organization.token),
+                "private",
+                "client-event",
+                pusher_data_obj,
+            )
+        except Exception as e:
+            logger.error(f"Error while sending notification to all widgets: {e}")

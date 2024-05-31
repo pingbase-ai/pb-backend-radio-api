@@ -385,7 +385,7 @@ def schedule_active_status_for_client(client, is_active, scheduled_time):
         logger.error(f"Error while scheduling task: {e}")
 
 
-@lru_cache(maxsize=1000)
+# @lru_cache(maxsize=1000)
 def convert_time_to_utc(time_field, timezone_str):
     # Get the current date and the provided time
     today = timezone.now().date()
@@ -408,6 +408,8 @@ def get_open_close_time_current_day(organization):
     org_timezone = organization.timezone
     current_time = timezone.now()
     current_day = current_time.weekday() + 1
+
+    logger.info(f"\n\n current_day: {current_day} \n\n")
     try:
         office_hours = organization.office_hours.get(weekday=current_day)
     except Exception as e:
@@ -446,7 +448,7 @@ def bulk_update_active_status_for_clients(org_id, force_update=False):
                 )
                 return
     except Exception as e:
-        logger.error(f"Error while deleting existing tasks: {e}")
+        logger.warn(f"Error while deleting existing tasks: {e}")
 
     try:
         # Open Time
@@ -471,7 +473,7 @@ def bulk_update_active_status_for_clients(org_id, force_update=False):
                 next_run=close_time,
             )
     except Exception as e:
-        logger.error(f"Error while scheduling task with task_name: {task_name} : {e}")
+        logger.warn(f"Error while scheduling task with task_name: {task_name} : {e}")
 
 
 def update_active_status_for_all_clients_auto(org_id, is_active):

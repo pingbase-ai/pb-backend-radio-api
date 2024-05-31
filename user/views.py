@@ -71,6 +71,9 @@ from .constants import (
     get_new_app_signup_slack_block_template_part_1,
     get_new_app_signup_slack_block_template_part_2,
     get_new_app_signup_slack_block_template_part_3,
+    SKIPPED,
+    NOT_APPLICABLE,
+    COMPLETED,
 )
 from home.models import EndUserLogin, EndUserSession
 from django.utils import timezone
@@ -1151,6 +1154,53 @@ class InitEndUserView(generics.GenericAPIView):
                 {"message": "Something went wrong"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    def put(self, request, *args, **kwargs):
+        org_token = request.headers.get("organization-token")
+        if not org_token:
+            return Response(
+                {"message": "Organization token is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        organization = Organization.objects.filter(token=org_token).first()
+        if not organization:
+            return Response(
+                {"message": "Organization token not valid"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        data = request.data
+        new_check_in_status = data.get("check_in_status")
+        user_id = data.get("user_id")
+        user = None
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"message": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        endUser = user.end_user
+
+        current_check_status = endUser.check_in_status
+
+        if current_check_status in [SKIPPED, NOT_APPLICABLE, COMPLETED]:
+            return Response(
+                {"message": "Check-in status already set"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            endUser.check_in_status = new_check_in_status
+            endUser.save()
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return Response(
+                {"message": "Something went wrong"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        return Response(
+            {"message": "Check-in status updated successfully"},
+            status=status.HTTP_200_OK,
+        )
 
 
 class ExitEndUserView(CustomGenericAPIView):
