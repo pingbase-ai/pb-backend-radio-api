@@ -363,6 +363,9 @@ class PusherUserAuth(APIView):
         user = {
             "user_id": user_id,
             "user_info": {"name": username, "user_type": user_type},
+            "is_online": (
+                user.client.is_client_online if user_type == CLIENT else None
+            ),
         }
 
         logger.info(f"pusher_client: {dir(pusher_client)}")
