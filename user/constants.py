@@ -11,9 +11,9 @@ PENDING = "pending"
 
 # CheckIn events
 
-CHECKIN_SKIPPED = "checkin_skipped"
-CHECKIN_COMPLETED = "checkin_completed"
-CHECKIN_NOT_APPLICABLE = "checkin_not_applicable"
+CHECKIN_SKIPPED = "CHECKIN_SKIPPED"
+CHECKIN_COMPLETED = "CHECKIN_COMPLETED"
+CHECKIN_NOT_APPLICABLE = "CHECKIN_NOT_APPLICABLE"
 
 
 # Function constants
