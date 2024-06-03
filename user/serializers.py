@@ -45,6 +45,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
     linkedin = serializers.SerializerMethodField()
     last_session_login = serializers.SerializerMethodField()
     is_new = serializers.SerializerMethodField()
+    checkin_status = serializers.SerializerMethodField()
 
     def get_id(self, obj):
         return obj.user.id
@@ -94,6 +95,13 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
     def get_is_new(self, obj):
         return obj.is_new
 
+    def get_checkin_status(self, obj):
+        try:
+            return obj.check_in_status
+        except Exception as e:
+            logger.error(f"Error while fetching checkin status: {e}")
+            return None
+
     class Meta:
         model = EndUser
         fields = [
@@ -110,6 +118,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
             "linkedin",
             "last_session_login",
             "is_new",
+            "checkin_status",
         ]
 
 
@@ -362,6 +371,7 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
     onboarded_by = serializers.SerializerMethodField()
     auto_sent_after = serializers.SerializerMethodField()
     banners = serializers.SerializerMethodField()
+    check_in = serializers.SerializerMethodField()
 
     def get_name(self, obj):
         return obj.name
@@ -430,6 +440,12 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
             results = {}
         return results
 
+    def get_check_in(self, obj):
+        if hasattr(obj, check_in_feature):
+            return CheckInFeatureSerializer(obj.check_in_feature).data
+
+        return None
+
     class Meta:
         model = Organization
         fields = [
@@ -449,6 +465,7 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
             "onboarded_by",
             "auto_sent_after",
             "banners",
+            "check_in",
         ]
 
 

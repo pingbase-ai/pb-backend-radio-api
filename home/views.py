@@ -1408,10 +1408,7 @@ class CalendlyWebhookAPIView(CustomAPIView):
                     date=required_date,
                 )
 
-                if (
-                    endUser.check_in_status == PENDING
-                    and organization.check_in_feature.master_switch
-                ):
+                if endUser.check_in_status == PENDING:
                     # send a pusher notification to the endUser regarding the meeting
                     pusher_data_obj = {
                         "source_event_type": "meeting_scheduled",

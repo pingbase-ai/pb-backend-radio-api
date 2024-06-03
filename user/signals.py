@@ -20,7 +20,11 @@ from .utils import (
     schedule_next_update_for_organization,
     bulk_update_active_status_for_clients,
 )
-from pusher_channel_app.utils import publish_event_to_client, publish_event_to_channel
+from pusher_channel_app.utils import (
+    publish_event_to_client,
+    publish_event_to_channel,
+    publish_event_to_user,
+)
 from .constants import BANNER_OOO_TEXT, BANNER_OOO_HYPERLINK_TEXT
 from django.core.cache import cache
 from django_q.models import Schedule
@@ -33,6 +37,7 @@ from user.constants import (
     NOT_APPLICABLE,
     CHECKIN_NOT_APPLICABLE,
 )
+from infra_utils.utils import encode_base64
 
 from home.event_types import SUCCESS, MANUAL
 
@@ -79,6 +84,34 @@ def watch_check_in_status(sender, instance, **kwargs):
                         storage_url=None,
                         organization=instance.organization,
                     )
+
+                    # send a pusher notification to the user
+
+                    pusher_data_obj = {
+                        "source_event_type": "check_in_status_change",
+                        "check_in_status": check_in_status,
+                        "user_id": instance.user.id,
+                    }
+
+                    try:
+                        publish_event_to_user(
+                            instance.organization.token,
+                            "private",
+                            encode_base64(f"{instance.user.id}"),
+                            "checkin-event",
+                            pusher_data_obj,
+                        )
+
+                        publish_event_to_channel(
+                            instance.organization.token,
+                            "private",
+                            "checkin-event",
+                            pusher_data_obj,
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Error while sending notification to enduser or client: {e}"
+                        )
 
             except Exception as e:
                 logger.error(f"Error while creating an event for check-in status: {e}")
@@ -341,7 +374,7 @@ def check_in_feature_updated(sender, instance, created, **kwargs):
             publish_event_to_channel(
                 str(instance.organization.token),
                 "private",
-                "client-event",
+                "master-event",
                 pusher_data_obj,
             )
         except Exception as e:

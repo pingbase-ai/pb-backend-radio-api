@@ -41,6 +41,7 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
     enduser_sessions = serializers.SerializerMethodField()
     enduser_trail_type = serializers.SerializerMethodField()
     enduser_linkedin = serializers.SerializerMethodField()
+    enduser_checkin_status = serializers.SerializerMethodField()
 
     storage_url = serializers.SerializerMethodField()
     is_seen_enduser = serializers.SerializerMethodField()
@@ -171,6 +172,14 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             logger.error(f"Error while fetching is_new: {e}")
             return False
 
+    def get_enduser_checkin_status(self, obj):
+        try:
+            user = obj.dest_user if obj.is_parent else obj.src_user
+            return user.end_user.check_in_status if user else False
+        except Exception as e:
+            logger.error(f"Error while fetching check_in_status: {e}")
+            return False
+
     class Meta:
         model = Event
         fields = [
@@ -203,6 +212,7 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             "enduser_trail_type",
             "enduser_linkedin",
             "enduser_is_new",
+            "enduser_checkin_status",
             "storage_url",
             "is_seen_enduser",
             "is_played",
