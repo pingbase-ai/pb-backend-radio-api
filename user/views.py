@@ -1092,7 +1092,7 @@ class CreateEndUserView(CustomGenericAPIView):
                     "id": end_user.user.id,
                     "sessions": 1,
                     "is_new": end_user.is_new,
-                    "check_in_status": endUser.check_in_status,
+                    "check_in_status": end_user.check_in_status,
                     "end_user_meetings": 0,
                 },
                 status=status.HTTP_201_CREATED,
