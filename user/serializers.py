@@ -441,7 +441,7 @@ class OrganizationSerializerCustom(serializers.ModelSerializer):
         return results
 
     def get_check_in(self, obj):
-        if hasattr(obj, check_in_feature):
+        if hasattr(obj, "check_in_feature"):
             return CheckInFeatureSerializer(obj.check_in_feature).data
 
         return None
