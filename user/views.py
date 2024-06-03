@@ -74,11 +74,16 @@ from .constants import (
     SKIPPED,
     NOT_APPLICABLE,
     COMPLETED,
+    CHECKIN_SKIPPED,
+    CHECKIN_COMPLETED,
+    CHECKIN_NOT_APPLICABLE,
 )
 from home.models import EndUserLogin, EndUserSession
 from django.utils import timezone
 from user.tasks import send_slack_blocks_async
 from dyte.utils import replace_special_chars
+from events.models import Event
+from home.event_types import SUCCESS, AUTOMATIC, VOICE_NOTE, MANUAL
 
 import logging
 import json
@@ -1191,6 +1196,32 @@ class InitEndUserView(generics.GenericAPIView):
         try:
             endUser.check_in_status = new_check_in_status
             endUser.save()
+
+            # create a new Event
+            # Create an Event for the check-in status change
+            event_type = None
+            if new_check_in_status == COMPLETED:
+                event_type = CHECKIN_COMPLETED
+            elif new_check_in_status == SKIPPED:
+                event_type = CHECKIN_SKIPPED
+            else:
+                event_type = CHECKIN_NOT_APPLICABLE
+
+            event = Event.create_event_async(
+                event_type=event_type,
+                source_user_id=int(user_id),
+                destination_user_id=None,
+                status=SUCCESS,
+                duration=0,
+                frontend_screen="NA",
+                agent_name=None,
+                initiated_by=MANUAL,
+                interaction_type=NOT_APPLICABLE,
+                interaction_id=None,
+                is_parent=False,
+                storage_url=None,
+                organization=organization,
+            )
         except Exception as e:
             logger.error(f"Error: {e}")
             return Response(
@@ -1632,6 +1663,32 @@ class EndUserList(CustomGenericAPIListView):
         if is_request_valid:
             end_user.check_in_status = check_in_status
             end_user.save()
+
+            # Create an Event
+            # Create an Event for the check-in status change
+            event_type = None
+            if check_in_status == COMPLETED:
+                event_type = CHECKIN_COMPLETED
+            elif check_in_status == SKIPPED:
+                event_type = CHECKIN_SKIPPED
+            else:
+                event_type = CHECKIN_NOT_APPLICABLE
+
+            event = Event.create_event_async(
+                event_type=event_type,
+                source_user_id=user.id,
+                destination_user_id=int(end_user_id),
+                status=SUCCESS,
+                duration=0,
+                frontend_screen="NA",
+                agent_name=None,
+                initiated_by=MANUAL,
+                interaction_type=NOT_APPLICABLE,
+                interaction_id=None,
+                is_parent=True,
+                storage_url=None,
+                organization=client.organization,
+            )
             return Response(
                 {"message": "Check in status updated successfully"},
                 status=status.HTTP_200_OK,
