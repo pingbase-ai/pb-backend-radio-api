@@ -313,7 +313,27 @@ def alert_banner_active_status(sender, instance, **kwargs):
                 except Exception as e:
                     logger.error(f"Error while updating client status in signal: {e}")
 
-                # Send pusher notification
+                # send a pusher notification to all the clients
+                try:
+                    for client in instance.organization.clients.all():
+                        pusher_data_obj_client = {
+                            "source_event_type": "client_status_change",
+                            "is_active": instance.is_active,
+                            "user_id": client.user.id,
+                        }
+
+                        publish_event_to_client(
+                            str(client.organization.token),
+                            "private",
+                            "client-event",
+                            pusher_data_obj_client,
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"Error while sending notification to client about client status: {e}"
+                    )
+
+                # Send pusher notification about banner
                 pusher_data_obj = {
                     "source_event_type": "banner_status_change",
                     "is_active": instance.is_active,
