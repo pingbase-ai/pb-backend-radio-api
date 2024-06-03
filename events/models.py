@@ -1,7 +1,12 @@
 from django.db import models
 from django_q.tasks import async_task
 from user.models import Organization, User
-from user.constants import CHECKIN_SKIPPED, CHECKIN_COMPLETED, CHECKIN_NOT_APPLICABLE
+from user.constants import (
+    CHECKIN_SKIPPED,
+    CHECKIN_COMPLETED,
+    CHECKIN_NOT_APPLICABLE,
+    NOT_APPLICABLE,
+)
 
 
 class Event(models.Model):
@@ -37,6 +42,7 @@ class Event(models.Model):
         (VOICE_NOTE, "Voice Note"),
         (LOGIN, "Login"),
         (MEETING, "Meeting"),
+        (NOT_APPLICABLE, "Not Applicable"),
     )
 
     initiated_by_choices = ((AUTOMATIC, "Automatic"), (MANUAL, "Manual"))
