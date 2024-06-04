@@ -293,7 +293,7 @@ def alert_banner_active_status(sender, instance, **kwargs):
                     for client in instance.organization.clients.all():
                         pusher_data_obj_client = {
                             "source_event_type": "client_status_change",
-                            "is_active": instance.is_active,
+                            "is_active": not instance.is_active,
                             "user_id": client.user.id,
                         }
 

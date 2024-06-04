@@ -481,5 +481,10 @@ def update_active_status_for_all_clients_auto(org_id, is_active):
 
     try:
         clients = organization.clients.all().update(is_client_online=is_active)
+        # update the banner aswell here
+        banner = organization.client_banners.filter(banner_type="ooo").first()
+        if banner:
+            banner.is_active = not is_active
+            banner.save()
     except Exception as e:
         logger.error(f"Error while updating bulk client status: {e}")
