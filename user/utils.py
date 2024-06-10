@@ -413,7 +413,7 @@ def get_open_close_time_current_day(organization):
     try:
         office_hours = organization.office_hours.get(weekday=current_day)
     except Exception as e:
-        logger.error(f"Error while fetching office hours: {e}")
+        logger.warning(f"Error while fetching office hours: {e}")
         return None, None, False
     is_currently_open = office_hours.is_open
     if not is_currently_open:
