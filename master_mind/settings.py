@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "django_q",
+    "channels",
     "infra_utils",
     "user",
     "rest_framework_simplejwt.token_blacklist",
@@ -77,6 +78,8 @@ INSTALLED_APPS = [
     "integrations.outlook",
     "integrations.caldotcom",
     "health",
+    "websocket",
+    "websocket.live_sessions",
 ]
 
 MIDDLEWARE = [
@@ -111,11 +114,22 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "master_mind.wsgi.application"
-
+ASGI_APPLICATION = "master_mind.asgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.pubsub.RedisPubSubChannelLayer",
+        "CONFIG": {
+            "hosts": [(str(os.getenv("REDIS_HOST")), (os.getenv("REDIS_PORT")))],
+            "capacity": 10000,
+            "expiry": 60,
+        },
+    },
+}
+print(os.getenv("REDIS_HOST"), os.getenv("REDIS_PORT"))
 
 DATABASES = {
     "default": {
@@ -296,6 +310,8 @@ AZURE_PINGBASE_APP_CLIENT_SECRET_VALUE = os.getenv(
     "AZURE_PINGBASE_APP_CLIENT_SECRET_VALUE"
 )
 
+AZURE_STORAGE_SESSIONS_PREFIX = os.getenv("AZURE_STORAGE_SESSIONS_PREFIX")
+
 
 # UPLEAD
 UPLEAD_API_KEY = os.getenv("UPLEAD_API_KEY")
@@ -319,3 +335,8 @@ REVERSE_CONTACT_BASE_URL = os.getenv("REVERSE_CONTACT_BASE_URL")
 
 # June
 JUNE_API_KEY = os.getenv("JUNE_API_KEY")
+
+
+# REDIS
+REDIS_HOST = os.getenv("REDIS_HOST")
+REDIS_PORT = os.getenv("REDIS_PORT")

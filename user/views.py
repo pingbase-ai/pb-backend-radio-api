@@ -41,6 +41,7 @@ from .models import (
     Widget,
     EndUser,
     CheckInFeature,
+    UserSession,
 )
 from pusher_channel_app.models import PusherChannelApp
 from .serializers import (
@@ -1052,7 +1053,6 @@ class CreateEndUserView(CustomGenericAPIView):
                 end_user=user.end_user, organization=organization
             ).count()
             endUser = user.end_user
-            is_new = request.data.get("is_new")
 
             try:
                 endUser.first_name = request.data.get("first_name")
@@ -1060,7 +1060,7 @@ class CreateEndUserView(CustomGenericAPIView):
                 endUser.role = request.data.get("role")
                 endUser.trial_type = request.data.get("trial_type")
                 endUser.company = request.data.get("company")
-                endUser.is_new = request.data.get("is_new")
+                endUser.is_new = is_new
                 endUser.save()
             except Exception as e:
                 logger.error(f"Error while updating endUser details: {e}")
@@ -1260,6 +1260,33 @@ class ExitEndUserView(CustomGenericAPIView):
             {"message": "EndUser exit event recorded"},
             status=status.HTTP_200_OK,
         )
+
+
+class EndUserSessionView(CustomGenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        client = request.user
+        data = request.data
+        enduser_id = data.get("enduser_id")
+
+        try:
+            user = User.objects.get(id=enduser_id)
+            session_obj = (
+                UserSession.objects.filter(user=user).order_by("-modified_at").first()
+            )
+            if session_obj:
+                return Response(
+                    {"session_id": session_obj.session_id}, status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    {"message": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+        except User.DoesNotExist:
+            return Response(
+                {"message": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class ClientView(CustomGenericAPIView):
