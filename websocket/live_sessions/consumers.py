@@ -115,7 +115,7 @@ class EndUserConsumer(AsyncWebsocketConsumer):
                     await asyncio.wait_for(self.session.asave(), timeout=15.0)
 
                     # create an Event object for the session using django_q
-                    temp = sync_to_async(async_task)(
+                    await sync_to_async(async_task)(
                         "websocket.live_sessions.tasks.create_session_event",
                         storage_url,
                         self.session,
