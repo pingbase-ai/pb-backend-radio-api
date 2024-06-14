@@ -1268,8 +1268,28 @@ class EndUserSessionView(CustomGenericAPIView):
     def get(self, request):
         client = request.user
         enduser_id = request.query_params.get("enduser_id", None)
+        session_id = request.query_params.get("session_id", None)
 
         try:
+            if session_id:
+                try:
+                    session_obj = UserSession.objects.get(session_id=session_id)
+                    return Response(
+                        {
+                            "session_id": session_obj.session_id,
+                            "initial_events": session_obj.initial_events,
+                            "created_at": session_obj.created_at,
+                            "modified_at": session_obj.modified_at,
+                            "storage_url": session_obj.storage_url,
+                        },
+                        status=status.HTTP_200_OK,
+                    )
+                except Exception as e:
+                    logger.error(f"Error: {e}")
+                    return Response(
+                        {"message": "Session not found"},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
             user = User.objects.get(id=enduser_id)
             session_obj = (
                 UserSession.objects.filter(user=user).order_by("-modified_at").first()

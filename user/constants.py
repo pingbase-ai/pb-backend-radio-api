@@ -16,6 +16,10 @@ CHECKIN_COMPLETED = "CHECKIN_COMPLETED"
 CHECKIN_NOT_APPLICABLE = "CHECKIN_NOT_APPLICABLE"
 
 
+# Session
+SESSION_RECORDING = "SESSION_RECORDING"
+
+
 # Function constants
 def get_integration_code_snippet(token: str) -> str:
     integration_code_snippet = f"""

@@ -2,8 +2,10 @@ from azure.storage.blob.aio import BlobServiceClient
 from channels.generic.websocket import AsyncWebsocketConsumer
 from datetime import datetime
 from django.conf import settings
-from websocket.utils import RedisPool
 from urllib.parse import parse_qs
+from websocket.utils import RedisPool
+from asgiref.sync import sync_to_async
+
 
 import json
 import logging
@@ -55,8 +57,11 @@ class EndUserConsumer(AsyncWebsocketConsumer):
             self.event_buffer = []
             self.buffer_flush_task = None
 
-            # Initialize a list to store the first X events
-            self.initial_events = []
+            # Initialize a dictionary to store the latest events of type 2 and 4
+            self.latest_events = {"2": None, "4": None}
+
+            # total duration of the session
+            self.total_duration = 0
 
             logger.info(
                 f"Connection established successfully -- {self.channel_group_name}"
@@ -66,6 +71,8 @@ class EndUserConsumer(AsyncWebsocketConsumer):
             await self.close()
 
     async def disconnect(self, close_code):
+        from django_q.tasks import async_task
+
         try:
             logger.info(f"Starting disconnection process -- {self.channel_group_name}")
             # Leave the end user's private channel
@@ -89,7 +96,7 @@ class EndUserConsumer(AsyncWebsocketConsumer):
 
             # Push the events to azure storage
             storage_url = await asyncio.wait_for(
-                self.save_events_to_azure(), timeout=10.0
+                self.save_events_to_azure(), timeout=20.0
             )
 
             if self.session:
@@ -98,10 +105,27 @@ class EndUserConsumer(AsyncWebsocketConsumer):
                         # Add this storage_url to the session object
                         self.session.storage_url = storage_url
 
-                    await asyncio.wait_for(self.session.asave(), timeout=5.0)
+                    # Add the latest type 2 and type 4 events to the session object
+                    self.session.initial_events = [
+                        {"message": event["message"]}
+                        for event in self.latest_events.values()
+                        if event is not None
+                    ]
+
+                    await asyncio.wait_for(self.session.asave(), timeout=15.0)
+
+                    # create an Event object for the session using django_q
+                    temp = sync_to_async(async_task)(
+                        "websocket.live_sessions.tasks.create_session_event",
+                        storage_url,
+                        self.session,
+                        self.enduser_id,
+                        self.total_duration,
+                    )
+
                 except asyncio.TimeoutError:
                     logger.error(
-                        "Saving session storage_url timed out during disconnect"
+                        "Saving session storage_url or initial_events timed out during disconnect"
                     )
             logger.info(f"Disconnection process completed -- {self.channel_group_name}")
         except Exception as e:
@@ -111,14 +135,15 @@ class EndUserConsumer(AsyncWebsocketConsumer):
         try:
             text_data_json = json.loads(text_data)
             message = text_data_json["message"]
+            message_type = str(text_data_json.get("type"))
 
             # Add the event to the local buffer
             self.event_buffer.append(json.dumps(text_data_json))
 
-            # Store the first X events in the initial_events list
-            if len(self.initial_events) < 10:
-                self.initial_events.append(text_data_json)
-                await self.save_initial_events()
+            # Store the latest event of type 2 and 4
+            if message_type in ["2", "4"]:
+                self.latest_events[message_type] = text_data_json
+                await self.save_latest_events()
 
             # If the buffer size exceeds a threshold, flush it to Redis
             if len(self.event_buffer) >= 100:
@@ -142,7 +167,7 @@ class EndUserConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             logger.error(f"Error during receive: {e}")
 
-    async def save_initial_events(self):
+    async def save_latest_events(self):
         try:
             # Ensure the session creation task has completed
             if self.session_task:
@@ -154,12 +179,16 @@ class EndUserConsumer(AsyncWebsocketConsumer):
                     logger.error("Session creation task timed out during event receive")
                     return
 
-            # Update the session object with the initial events
+            # Update the session object with the latest events
             if self.session:
-                self.session.initial_events = self.initial_events
+                self.session.initial_events = [
+                    {"message": event["message"]}
+                    for event in self.latest_events.values()
+                    if event is not None
+                ]
                 await self.session.asave()
         except Exception as e:
-            logger.error(f"Error during save_initial_events: {e}")
+            logger.error(f"Error during save_latest_events: {e}")
 
     async def flush_event_buffer(self):
         if self.event_buffer:
@@ -218,6 +247,14 @@ class EndUserConsumer(AsyncWebsocketConsumer):
                 # Ensure that the client is properly closed
                 await blob_service_client.close()
                 await blob_client.close()
+
+            # Calculate total duration from events
+            try:
+                self.total_duration = int(events[-1]["message"]["timestamp"]) - int(
+                    events[0]["message"]["timestamp"]
+                )
+            except Exception as e:
+                logger.error(f"Error during calculating total_duration: {e}")
 
             # Return the blob URL
             return blob_client.url
