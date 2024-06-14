@@ -58,7 +58,7 @@ class EndUserConsumer(AsyncWebsocketConsumer):
             self.buffer_flush_task = None
 
             # Initialize a dictionary to store the latest events of type 2 and 4
-            self.latest_events = {"2": None, "4": None}
+            # self.latest_events = {"2": None, "4": None}
 
             # total duration of the session
             self.total_duration = 0
@@ -106,11 +106,11 @@ class EndUserConsumer(AsyncWebsocketConsumer):
                         self.session.storage_url = storage_url
 
                     # Add the latest type 2 and type 4 events to the session object
-                    self.session.initial_events = [
-                        {"message": event["message"]}
-                        for event in self.latest_events.values()
-                        if event is not None
-                    ]
+                    # self.session.initial_events = [
+                    #     {"message": event["message"]}
+                    #     for event in self.latest_events.values()
+                    #     if event is not None
+                    # ]
 
                     await asyncio.wait_for(self.session.asave(), timeout=15.0)
 
@@ -141,9 +141,9 @@ class EndUserConsumer(AsyncWebsocketConsumer):
             self.event_buffer.append(json.dumps(text_data_json))
 
             # Store the latest event of type 2 and 4
-            if message_type in ["2", "4"]:
-                self.latest_events[message_type] = text_data_json
-                await self.save_latest_events()
+            # if message_type in ["2", "4"]:
+            #     self.latest_events[message_type] = text_data_json
+            #     await self.save_latest_events()
 
             # If the buffer size exceeds a threshold, flush it to Redis
             if len(self.event_buffer) >= 100:
@@ -265,6 +265,8 @@ class EndUserConsumer(AsyncWebsocketConsumer):
 
 class ClientConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        from pusher_channel_app.utils import publish_event_to_user
+        from infra_utils.utils import encode_base64
 
         query_string = parse_qs(self.scope["query_string"].decode())
         token = query_string.get("token", [None])[0]
@@ -281,6 +283,18 @@ class ClientConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.channel_group_name, self.channel_name)
 
         await self.accept()
+
+        # send a pusher notification to the enduser
+        pusher_data_obj = {
+            "source_event_type": "live_session_connected",
+        }
+        try:
+            await sync_to_async(publish_event_to_user)(
+                self.org_id, "private", f"{encode_base64(f"{self.enduser_id}")}", "client-event", pusher_data_obj
+            )
+
+        except Exception as e:
+            logger.error(f"Error during sending a pusher event: {e}")
 
     async def disconnect(self, close_code):
         # Leave the end user's private channel
