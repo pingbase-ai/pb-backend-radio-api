@@ -3,11 +3,15 @@ from events.models import Event
 from user.constants import SESSION_RECORDING
 from home.event_types import SUCCESS, AUTOMATIC, SESSION, SESSION_RECORDING_NAME
 
+import logging
+
+logger = logging.getLogger("django")
+
 
 def create_session_event(storage_url, session, enduser_id, total_duration):
 
     try:
-        print(f"Creating event for session {session.session_id}")
+        logger.info(f"Creating event for session {session.session_id}")
         total_sessions = UserSession.objects.filter(
             user_id=enduser_id,
         ).count()
