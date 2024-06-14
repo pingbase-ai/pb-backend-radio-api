@@ -290,7 +290,11 @@ class ClientConsumer(AsyncWebsocketConsumer):
         }
         try:
             await sync_to_async(publish_event_to_user)(
-                self.org_id, "private", f"{encode_base64(f"{self.enduser_id}")}", "client-event", pusher_data_obj
+                self.org_id,
+                "private",
+                f"{encode_base64(self.enduser_id)}",
+                "client-event",
+                pusher_data_obj,
             )
 
         except Exception as e:
