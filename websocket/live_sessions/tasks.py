@@ -15,7 +15,7 @@ def create_session_event(storage_url, session, enduser_id, total_duration):
         total_sessions = UserSession.objects.filter(
             user_id=enduser_id,
         ).count()
-        Event.objects.create(
+        event = Event.create_event(
             event_type=SESSION_RECORDING,
             source_user_id=enduser_id,
             destination_user_id=None,
@@ -30,6 +30,9 @@ def create_session_event(storage_url, session, enduser_id, total_duration):
             storage_url=storage_url,
             organization=session.user.end_user.organization,
             name=f"{SESSION_RECORDING_NAME} {total_sessions}",
+            request_meta=None,
+            error_stack_trace=None,
         )
+
     except Exception as e:
         logger.error(f"Error during create_event: {e}")
