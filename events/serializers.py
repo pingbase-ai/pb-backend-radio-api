@@ -47,6 +47,7 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
     is_seen_enduser = serializers.SerializerMethodField()
     is_played = serializers.SerializerMethodField()
     is_unread = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
 
     def get_event_type(self, obj):
         return obj.event_type
@@ -180,6 +181,9 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             logger.error(f"Error while fetching check_in_status: {e}")
             return False
 
+    def get_name(self, obj):
+        return obj.name if obj.name else None
+
     class Meta:
         model = Event
         fields = [
@@ -217,6 +221,7 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             "is_seen_enduser",
             "is_played",
             "is_unread",
+            "name",
         ]
 
 
@@ -243,6 +248,7 @@ class CustomEventSerializer(serializers.ModelSerializer):
     is_seen_enduser = serializers.SerializerMethodField()
     is_played = serializers.SerializerMethodField()
     is_unread = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
 
     def get_event_type(self, obj):
         return obj.event_type
@@ -312,6 +318,9 @@ class CustomEventSerializer(serializers.ModelSerializer):
     def get_is_unread(self, obj):
         return obj.is_unread
 
+    def get_name(self, obj):
+        return obj.name if obj.name else None
+
     class Meta:
         model = Event
         fields = [
@@ -335,6 +344,7 @@ class CustomEventSerializer(serializers.ModelSerializer):
             "is_seen_enduser",
             "is_played",
             "is_unread",
+            "name",
         ]
 
 
