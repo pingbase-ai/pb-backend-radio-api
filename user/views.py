@@ -1267,8 +1267,7 @@ class EndUserSessionView(CustomGenericAPIView):
 
     def get(self, request):
         client = request.user
-        data = request.data
-        enduser_id = data.get("enduser_id")
+        enduser_id = request.query_params.get("enduser_id", None)
 
         try:
             user = User.objects.get(id=enduser_id)
@@ -1277,7 +1276,14 @@ class EndUserSessionView(CustomGenericAPIView):
             )
             if session_obj:
                 return Response(
-                    {"session_id": session_obj.session_id}, status=status.HTTP_200_OK
+                    {
+                        "session_id": session_obj.session_id,
+                        "initial_events": session_obj.initial_events,
+                        "created_at": session_obj.created_at,
+                        "modified_at": session_obj.modified_at,
+                        "storage_url": session_obj.storage_url,
+                    },
+                    status=status.HTTP_200_OK,
                 )
             else:
                 return Response(

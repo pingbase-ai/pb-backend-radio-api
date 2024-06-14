@@ -3,6 +3,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from datetime import datetime
 from django.conf import settings
 from websocket.utils import RedisPool
+from urllib.parse import parse_qs
 
 import json
 import logging
@@ -18,8 +19,11 @@ class EndUserConsumer(AsyncWebsocketConsumer):
             logger.info("Starting connection process")
             from user.models import UserSession
 
+            query_string = parse_qs(self.scope["query_string"].decode())
+            token = query_string.get("token", [None])[0]
+
             self.channel_type = self.scope["url_route"]["kwargs"]["channel_type"]
-            self.org_id = self.scope["url_route"]["kwargs"]["org_id"]
+            self.org_id = token or None
             self.enduser_id = self.scope["url_route"]["kwargs"]["enduser_id"]
             self.session_id = self.scope["url_route"]["kwargs"]["session_id"]
             self.channel_group_name = (
@@ -51,14 +55,19 @@ class EndUserConsumer(AsyncWebsocketConsumer):
             self.event_buffer = []
             self.buffer_flush_task = None
 
-            logger.info("Connection established successfully")
+            # Initialize a list to store the first X events
+            self.initial_events = []
+
+            logger.info(
+                f"Connection established successfully -- {self.channel_group_name}"
+            )
         except Exception as e:
             logger.error(f"Error during connect: {e}")
             await self.close()
 
     async def disconnect(self, close_code):
         try:
-            logger.info("Starting disconnection process")
+            logger.info(f"Starting disconnection process -- {self.channel_group_name}")
             # Leave the end user's private channel
             await self.channel_layer.group_discard(
                 self.channel_group_name, self.channel_name
@@ -83,16 +92,18 @@ class EndUserConsumer(AsyncWebsocketConsumer):
                 self.save_events_to_azure(), timeout=10.0
             )
 
-            if self.session and storage_url:
+            if self.session:
                 try:
-                    # Add this storage_url to the session object
-                    self.session.storage_url = storage_url
+                    if storage_url:
+                        # Add this storage_url to the session object
+                        self.session.storage_url = storage_url
+
                     await asyncio.wait_for(self.session.asave(), timeout=5.0)
                 except asyncio.TimeoutError:
                     logger.error(
                         "Saving session storage_url timed out during disconnect"
                     )
-            logger.info("Disconnection process completed")
+            logger.info(f"Disconnection process completed -- {self.channel_group_name}")
         except Exception as e:
             logger.error(f"Error during disconnect: {e}")
 
@@ -100,10 +111,14 @@ class EndUserConsumer(AsyncWebsocketConsumer):
         try:
             text_data_json = json.loads(text_data)
             message = text_data_json["message"]
-            print(f"\n Received message: {message} \n")
 
             # Add the event to the local buffer
             self.event_buffer.append(json.dumps(text_data_json))
+
+            # Store the first X events in the initial_events list
+            if len(self.initial_events) < 10:
+                self.initial_events.append(text_data_json)
+                await self.save_initial_events()
 
             # If the buffer size exceeds a threshold, flush it to Redis
             if len(self.event_buffer) >= 100:
@@ -126,6 +141,25 @@ class EndUserConsumer(AsyncWebsocketConsumer):
             )
         except Exception as e:
             logger.error(f"Error during receive: {e}")
+
+    async def save_initial_events(self):
+        try:
+            # Ensure the session creation task has completed
+            if self.session_task:
+                try:
+                    self.session = await asyncio.wait_for(
+                        self.session_task, timeout=5.0
+                    )
+                except asyncio.TimeoutError:
+                    logger.error("Session creation task timed out during event receive")
+                    return
+
+            # Update the session object with the initial events
+            if self.session:
+                self.session.initial_events = self.initial_events
+                await self.session.asave()
+        except Exception as e:
+            logger.error(f"Error during save_initial_events: {e}")
 
     async def flush_event_buffer(self):
         if self.event_buffer:
@@ -194,8 +228,12 @@ class EndUserConsumer(AsyncWebsocketConsumer):
 
 class ClientConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+
+        query_string = parse_qs(self.scope["query_string"].decode())
+        token = query_string.get("token", [None])[0]
+
         self.channel_type = self.scope["url_route"]["kwargs"]["channel_type"]
-        self.org_id = self.scope["url_route"]["kwargs"]["org_id"]
+        self.org_id = token or None
         self.enduser_id = self.scope["url_route"]["kwargs"]["enduser_id"]
         self.session_id = self.scope["url_route"]["kwargs"]["session_id"]
         self.channel_group_name = (
