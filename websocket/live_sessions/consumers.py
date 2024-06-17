@@ -135,10 +135,9 @@ class EndUserConsumer(AsyncWebsocketConsumer):
         try:
             text_data_json = json.loads(text_data)
             message = text_data_json["message"]
-            message_type = str(text_data_json.get("type"))
 
             # Add the event to the local buffer
-            self.event_buffer.append(json.dumps(text_data_json))
+            self.event_buffer.append(json.dumps(message))
 
             # Store the latest event of type 2 and 4
             # if message_type in ["2", "4"]:
