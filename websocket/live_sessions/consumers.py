@@ -249,8 +249,8 @@ class EndUserConsumer(AsyncWebsocketConsumer):
 
             # Calculate total duration from events
             try:
-                self.total_duration = int(events[-1]["message"]["timestamp"]) - int(
-                    events[0]["message"]["timestamp"]
+                self.total_duration = int(events[-1]["timestamp"]) - int(
+                    events[0]["timestamp"]
                 )
             except Exception as e:
                 logger.error(f"Error during calculating total_duration: {e}")
