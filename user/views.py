@@ -1207,7 +1207,7 @@ class InitEndUserView(generics.GenericAPIView):
             else:
                 event_type = CHECKIN_NOT_APPLICABLE
 
-            event = Event.create_event_async(
+            event = Event.create_event(
                 event_type=event_type,
                 source_user_id=int(user_id),
                 destination_user_id=None,
@@ -1221,6 +1221,8 @@ class InitEndUserView(generics.GenericAPIView):
                 is_parent=False,
                 storage_url=None,
                 organization=organization,
+                request_meta=None,
+                error_stack_trace=None,
             )
         except Exception as e:
             logger.error(f"Error: {e}")
@@ -1727,7 +1729,7 @@ class EndUserList(CustomGenericAPIListView):
             else:
                 event_type = CHECKIN_NOT_APPLICABLE
 
-            event = Event.create_event_async(
+            event = Event.create_event(
                 event_type=event_type,
                 source_user_id=user.id,
                 destination_user_id=int(end_user_id),
@@ -1741,6 +1743,8 @@ class EndUserList(CustomGenericAPIListView):
                 is_parent=True,
                 storage_url=None,
                 organization=client.organization,
+                request_meta=None,
+                error_stack_trace=None,
             )
             return Response(
                 {"message": "Check in status updated successfully"},
