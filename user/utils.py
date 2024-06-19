@@ -413,7 +413,7 @@ def get_open_close_time_current_day(organization):
     try:
         office_hours = organization.office_hours.get(weekday=current_day)
     except Exception as e:
-        logger.error(f"Error while fetching office hours: {e}")
+        logger.warning(f"Error while fetching office hours: {e}")
         return None, None, False
     is_currently_open = office_hours.is_open
     if not is_currently_open:
@@ -481,5 +481,10 @@ def update_active_status_for_all_clients_auto(org_id, is_active):
 
     try:
         clients = organization.clients.all().update(is_client_online=is_active)
+        # update the banner aswell here
+        banner = organization.client_banners.filter(banner_type="ooo").first()
+        if banner:
+            banner.is_active = not is_active
+            banner.save()
     except Exception as e:
         logger.error(f"Error while updating bulk client status: {e}")

@@ -456,3 +456,15 @@ class CheckInFeature(CreatedModifiedModel):
 
     def __str__(self):
         return self.organization.name + " - " + self.support_email
+
+
+class UserSession(CreatedModifiedModel):
+    session_id = models.CharField(primary_key=True, max_length=256, editable=False)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="user_sessions"
+    )
+    storage_url = models.TextField(null=True, blank=True)
+    initial_events = models.JSONField(default=list, blank=True, null=True)
+
+    def __str__(self):
+        return self.session_id

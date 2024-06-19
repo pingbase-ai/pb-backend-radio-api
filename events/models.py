@@ -6,6 +6,7 @@ from user.constants import (
     CHECKIN_COMPLETED,
     CHECKIN_NOT_APPLICABLE,
     NOT_APPLICABLE,
+    SESSION_RECORDING,
 )
 
 
@@ -68,6 +69,7 @@ class Event(models.Model):
         (CHECKIN_SKIPPED, "Checkin Skipped"),
         (CHECKIN_COMPLETED, "Checkin Completed"),
         (CHECKIN_NOT_APPLICABLE, "Checkin Not Applicable"),
+        (SESSION_RECORDING, "Session Recording"),
         # There are more event_types
     )
 
@@ -134,6 +136,8 @@ class Event(models.Model):
         null=True,
     )
 
+    name = models.TextField(blank=True, null=True)
+
     # create a string representation for the event model
     def __str__(self):
         return self.event_type
@@ -157,6 +161,7 @@ class Event(models.Model):
         storage_url=None,
         organization=None,
         scheduled_time=None,
+        name=None,
     ):
         """
         Class method to create an Event instance.
@@ -188,6 +193,7 @@ class Event(models.Model):
             storage_url=storage_url,
             organization=organization,
             scheduled_time=scheduled_time,
+            name=name,
         )
         event.src_user_id = source_user_id
         event.dest_user_id = destination_user_id
@@ -212,6 +218,7 @@ class Event(models.Model):
         storage_url=None,
         organization=None,
         scheduled_time=None,
+        name=None,
     ):
         """
         Static method to create an Event instance asynchronously.
@@ -244,5 +251,6 @@ class Event(models.Model):
             storage_url=storage_url,
             organization=organization,
             scheduled_time=scheduled_time,
+            name=name,
         )
         return task_id

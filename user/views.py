@@ -41,6 +41,7 @@ from .models import (
     Widget,
     EndUser,
     CheckInFeature,
+    UserSession,
 )
 from pusher_channel_app.models import PusherChannelApp
 from .serializers import (
@@ -74,11 +75,16 @@ from .constants import (
     SKIPPED,
     NOT_APPLICABLE,
     COMPLETED,
+    CHECKIN_SKIPPED,
+    CHECKIN_COMPLETED,
+    CHECKIN_NOT_APPLICABLE,
 )
 from home.models import EndUserLogin, EndUserSession
 from django.utils import timezone
 from user.tasks import send_slack_blocks_async
 from dyte.utils import replace_special_chars
+from events.models import Event
+from home.event_types import SUCCESS, AUTOMATIC, VOICE_NOTE, MANUAL
 
 import logging
 import json
@@ -1047,7 +1053,6 @@ class CreateEndUserView(CustomGenericAPIView):
                 end_user=user.end_user, organization=organization
             ).count()
             endUser = user.end_user
-            is_new = request.data.get("is_new")
 
             try:
                 endUser.first_name = request.data.get("first_name")
@@ -1055,7 +1060,7 @@ class CreateEndUserView(CustomGenericAPIView):
                 endUser.role = request.data.get("role")
                 endUser.trial_type = request.data.get("trial_type")
                 endUser.company = request.data.get("company")
-                endUser.is_new = request.data.get("is_new")
+                endUser.is_new = is_new
                 endUser.save()
             except Exception as e:
                 logger.error(f"Error while updating endUser details: {e}")
@@ -1191,6 +1196,32 @@ class InitEndUserView(generics.GenericAPIView):
         try:
             endUser.check_in_status = new_check_in_status
             endUser.save()
+
+            # create a new Event
+            # Create an Event for the check-in status change
+            event_type = None
+            if new_check_in_status == COMPLETED:
+                event_type = CHECKIN_COMPLETED
+            elif new_check_in_status == SKIPPED:
+                event_type = CHECKIN_SKIPPED
+            else:
+                event_type = CHECKIN_NOT_APPLICABLE
+
+            event = Event.create_event_async(
+                event_type=event_type,
+                source_user_id=int(user_id),
+                destination_user_id=None,
+                status=SUCCESS,
+                duration=0,
+                frontend_screen="NA",
+                agent_name=None,
+                initiated_by=MANUAL,
+                interaction_type=NOT_APPLICABLE,
+                interaction_id=None,
+                is_parent=False,
+                storage_url=None,
+                organization=organization,
+            )
         except Exception as e:
             logger.error(f"Error: {e}")
             return Response(
@@ -1229,6 +1260,59 @@ class ExitEndUserView(CustomGenericAPIView):
             {"message": "EndUser exit event recorded"},
             status=status.HTTP_200_OK,
         )
+
+
+class EndUserSessionView(CustomGenericAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        client = request.user
+        enduser_id = request.query_params.get("enduser_id", None)
+        session_id = request.query_params.get("session_id", None)
+
+        try:
+            if session_id:
+                try:
+                    session_obj = UserSession.objects.get(session_id=session_id)
+                    return Response(
+                        {
+                            "session_id": session_obj.session_id,
+                            "initial_events": session_obj.initial_events,
+                            "created_at": session_obj.created_at,
+                            "modified_at": session_obj.modified_at,
+                            "storage_url": session_obj.storage_url,
+                        },
+                        status=status.HTTP_200_OK,
+                    )
+                except Exception as e:
+                    logger.error(f"Error: {e}")
+                    return Response(
+                        {"message": "Session not found"},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
+            user = User.objects.get(id=enduser_id)
+            session_obj = (
+                UserSession.objects.filter(user=user).order_by("-modified_at").first()
+            )
+            if session_obj:
+                return Response(
+                    {
+                        "session_id": session_obj.session_id,
+                        "initial_events": session_obj.initial_events,
+                        "created_at": session_obj.created_at,
+                        "modified_at": session_obj.modified_at,
+                        "storage_url": session_obj.storage_url,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(
+                    {"message": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+        except User.DoesNotExist:
+            return Response(
+                {"message": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class ClientView(CustomGenericAPIView):
@@ -1632,6 +1716,32 @@ class EndUserList(CustomGenericAPIListView):
         if is_request_valid:
             end_user.check_in_status = check_in_status
             end_user.save()
+
+            # Create an Event
+            # Create an Event for the check-in status change
+            event_type = None
+            if check_in_status == COMPLETED:
+                event_type = CHECKIN_COMPLETED
+            elif check_in_status == SKIPPED:
+                event_type = CHECKIN_SKIPPED
+            else:
+                event_type = CHECKIN_NOT_APPLICABLE
+
+            event = Event.create_event_async(
+                event_type=event_type,
+                source_user_id=user.id,
+                destination_user_id=int(end_user_id),
+                status=SUCCESS,
+                duration=0,
+                frontend_screen="NA",
+                agent_name=None,
+                initiated_by=MANUAL,
+                interaction_type=NOT_APPLICABLE,
+                interaction_id=None,
+                is_parent=True,
+                storage_url=None,
+                organization=client.organization,
+            )
             return Response(
                 {"message": "Check in status updated successfully"},
                 status=status.HTTP_200_OK,

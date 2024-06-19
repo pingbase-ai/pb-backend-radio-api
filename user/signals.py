@@ -60,31 +60,6 @@ def watch_check_in_status(sender, instance, **kwargs):
                     or check_in_status == SKIPPED
                     or check_in_status == NOT_APPLICABLE
                 ):
-                    # Create an Event for the check-in status change
-                    event_type = None
-                    if check_in_status == COMPLETED:
-                        event_type = CHECKIN_COMPLETED
-                    elif check_in_status == SKIPPED:
-                        event_type = CHECKIN_SKIPPED
-                    else:
-                        event_type = CHECKIN_NOT_APPLICABLE
-
-                    event = Event.create_event_async(
-                        event_type=event_type,
-                        source_user_id=None,
-                        destination_user_id=None,
-                        status=SUCCESS,
-                        duration=0,
-                        frontend_screen="NA",
-                        agent_name=None,
-                        initiated_by=MANUAL,
-                        interaction_type=NOT_APPLICABLE,
-                        interaction_id=None,
-                        is_parent=False,
-                        storage_url=None,
-                        organization=instance.organization,
-                    )
-
                     # send a pusher notification to the user
 
                     pusher_data_obj = {
@@ -313,7 +288,27 @@ def alert_banner_active_status(sender, instance, **kwargs):
                 except Exception as e:
                     logger.error(f"Error while updating client status in signal: {e}")
 
-                # Send pusher notification
+                # send a pusher notification to all the clients
+                try:
+                    for client in instance.organization.clients.all():
+                        pusher_data_obj_client = {
+                            "source_event_type": "client_status_change",
+                            "is_active": not instance.is_active,
+                            "user_id": client.user.id,
+                        }
+
+                        publish_event_to_client(
+                            str(client.organization.token),
+                            "private",
+                            "client-event",
+                            pusher_data_obj_client,
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"Error while sending notification to client about client status: {e}"
+                    )
+
+                # Send pusher notification about banner
                 pusher_data_obj = {
                     "source_event_type": "banner_status_change",
                     "is_active": instance.is_active,
