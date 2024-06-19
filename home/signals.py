@@ -122,7 +122,7 @@ def create_voice_note_event(sender, instance, created, **kwargs):
                 event_type = SENT_US_AUDIO_NOTE
             if instance.is_parent:
                 destination_user_id = instance.receiver.id
-            event = Event.create_event_async(
+            event = Event.create_event(
                 event_type=event_type,
                 source_user_id=instance.sender.id,
                 destination_user_id=destination_user_id,
@@ -136,6 +136,8 @@ def create_voice_note_event(sender, instance, created, **kwargs):
                 is_parent=instance.is_parent,
                 storage_url=instance.audio_file_url,
                 organization=organization,
+                request_meta=None,
+                error_stack_trace=None,
             )
         except Exception as e:
             logger.error(f"Error while creating voice note event: {e}")
