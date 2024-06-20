@@ -1038,6 +1038,35 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
+            elif update_type == "discard_call":
+                try:
+                    call.status = "discarded"
+                    call.save()
+                except Exception as e:
+                    logger.error(f"Error while discarding call: {e}")
+                    return Response(
+                        {"message": "Error while discarding call"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # publish the event to the enduser
+                pusher_data_obj = {
+                    "source_event_type": "discard_call",
+                    "id": str(call.call_id),
+                    "sender": str(call.caller.first_name),
+                    "storage_url": "",
+                }
+                try:
+                    publish_event_to_user(
+                        str(user.client.organization.token),
+                        "private",
+                        encode_base64(f"{call.receiver.id}"),
+                        "client-event",
+                        pusher_data_obj,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while publishing call scheduled event: {e}")
+
             return Response(
                 {"message": f"Call {update_type} successfully"},
                 status=status.HTTP_200_OK,

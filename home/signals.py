@@ -66,6 +66,7 @@ def create_login_event(sender, instance, created, **kwargs):
                 "company": f"{instance.end_user.company}",
                 "timestamp": str(timezone.now()),
                 "role": f"{instance.end_user.role}",
+                "check_in": f"{instance.end_user.check_in_status}",
             }
             try:
                 publish_event_to_client(
