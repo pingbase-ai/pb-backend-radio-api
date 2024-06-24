@@ -35,7 +35,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 ALLOWED_HOSTS = ["*"]
 
@@ -341,3 +341,6 @@ JUNE_API_KEY = os.getenv("JUNE_API_KEY")
 # REDIS
 REDIS_HOST = os.getenv("REDIS_HOST")
 REDIS_PORT = os.getenv("REDIS_PORT")
+
+# SESSION IGNORE
+SESSION_IGNORE_USER_IDS = list(os.getenv("SESSION_IGNORE_USER_IDS", "").split(","))
