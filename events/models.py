@@ -138,6 +138,8 @@ class Event(models.Model):
 
     name = models.TextField(blank=True, null=True)
 
+    sub_event_type = models.CharField(max_length=255, blank=True, null=True)
+
     # create a string representation for the event model
     def __str__(self):
         return self.event_type
@@ -162,6 +164,7 @@ class Event(models.Model):
         organization=None,
         scheduled_time=None,
         name=None,
+        sub_event_type=None,
     ):
         """
         Class method to create an Event instance.
@@ -194,6 +197,7 @@ class Event(models.Model):
             organization=organization,
             scheduled_time=scheduled_time,
             name=name,
+            sub_event_type=sub_event_type,
         )
         event.src_user_id = source_user_id
         event.dest_user_id = destination_user_id
@@ -219,6 +223,7 @@ class Event(models.Model):
         organization=None,
         scheduled_time=None,
         name=None,
+        sub_event_type=None,
     ):
         """
         Static method to create an Event instance asynchronously.
@@ -252,5 +257,6 @@ class Event(models.Model):
             organization=organization,
             scheduled_time=scheduled_time,
             name=name,
+            sub_event_type=sub_event_type,
         )
         return task_id

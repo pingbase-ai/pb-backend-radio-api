@@ -123,28 +123,30 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
 
 
 class EndUserSerializer(serializers.ModelSerializer):
-    first_name = serializers.CharField(write_only=True)
-    last_name = serializers.CharField(write_only=True)
-    email = serializers.EmailField(write_only=True)
+    phone = serializers.CharField(write_only=True, required=False, allow_null=True)
     organization_name = serializers.CharField(
-        write_only=True,
+        write_only=True, required=False, allow_null=True
     )
-    role = serializers.CharField(write_only=True)
-    trial_type = serializers.CharField(write_only=True)
-    company = serializers.CharField(write_only=True)
-    is_new = serializers.BooleanField(write_only=True)
+    # first_name = serializers.CharField(write_only=True, required=False, allow_null=True)
+    # last_name = serializers.CharField(write_only=True, required=False, allow_null=True)
+    # email = serializers.EmailField(write_only=True, required=False, allow_null=True)
+    # role = serializers.CharField(write_only=True, required=False, allow_null=True)
+    # trial_type = serializers.CharField(write_only=True, required=False, allow_null=True)
+    # company = serializers.CharField(write_only=True, required=False, allow_null=True)
+    # is_new = serializers.BooleanField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = EndUser
         fields = [
-            "first_name",
-            "last_name",
-            "email",
+            "phone",
             "organization_name",
-            "role",
-            "trial_type",
-            "company",
-            "is_new",
+            # "first_name",
+            # "last_name",
+            # "email",
+            # "role",
+            # "trial_type",
+            # "company",
+            # "is_new",
         ]
 
     def create(self, validated_data):

@@ -1039,11 +1039,11 @@ class CreateEndUserView(CustomGenericAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        user = User.objects.filter(email=request.data.get("email")).first()
+        user = User.objects.filter(phone=request.data.get("phone")).first()
 
         # end_user = EndUser.objects.filter(email=request.data.get("email")).first()
 
-        is_new = request.data.get("is_new")
+        is_new = request.data.get("is_new", False)
         if user:
             current_timestamp = timezone.now()
             end_user_meetings = Meeting.objects.filter(
@@ -1055,11 +1055,11 @@ class CreateEndUserView(CustomGenericAPIView):
             endUser = user.end_user
 
             try:
-                endUser.first_name = request.data.get("first_name")
-                endUser.last_name = request.data.get("last_name")
-                endUser.role = request.data.get("role")
-                endUser.trial_type = request.data.get("trial_type")
-                endUser.company = request.data.get("company")
+                endUser.first_name = request.data.get("first_name", None)
+                endUser.last_name = request.data.get("last_name", None)
+                endUser.role = request.data.get("role", None)
+                endUser.trial_type = request.data.get("trial_type", None)
+                endUser.company = request.data.get("company", None)
                 endUser.is_new = is_new
                 endUser.save()
             except Exception as e:
@@ -1078,13 +1078,14 @@ class CreateEndUserView(CustomGenericAPIView):
             )
         required_data = {
             "organization_name": organization.name,
-            "first_name": request.data.get("first_name"),
-            "last_name": request.data.get("last_name"),
-            "email": request.data.get("email"),
-            "role": request.data.get("role"),
-            "trial_type": request.data.get("trial_type"),
-            "company": request.data.get("company"),
-            "is_new": request.data.get("is_new"),
+            "first_name": request.data.get("first_name", None),
+            "last_name": request.data.get("last_name", None),
+            "email": request.data.get("email", None),
+            "role": request.data.get("role", None),
+            "trial_type": request.data.get("trial_type", None),
+            "company": request.data.get("company", None),
+            "is_new": request.data.get("is_new", None),
+            "phone": request.data.get("phone", None),
         }
         serializer = EndUserSerializer(data=required_data)
         if serializer.is_valid():
@@ -1129,6 +1130,8 @@ class InitEndUserView(generics.GenericAPIView):
             widgetIsActive = orgWidget.is_active
             widgetPosition = orgWidget.position
             widgetAvatar = orgWidget.avatar
+            widgetAvatarColor1 = orgWidget.color_1
+            widgetAvatarColor2 = orgWidget.color_2
 
             widgetAvatarNumber = int("".join(filter(str.isdigit, widgetAvatar)))
 
@@ -1140,6 +1143,8 @@ class InitEndUserView(generics.GenericAPIView):
                         "is_active": widgetIsActive,
                         "position": widgetPosition,
                         "avatar": widgetAvatarNumber,
+                        "color_1": widgetAvatarColor1,
+                        "color_2": widgetAvatarColor2,
                     },
                     "team_name": teamName,
                     "features": FeatureFlagConnectSerializer(

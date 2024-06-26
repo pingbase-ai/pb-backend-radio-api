@@ -25,6 +25,7 @@ admin.site.unregister(Group)
 @admin.register(User)
 class UserAdmin(ModelAdmin):
     list_display = (
+        "phone",
         "first_name",
         "email",
         "is_verified",

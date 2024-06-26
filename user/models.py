@@ -37,14 +37,14 @@ BANNER_TYPES = [("ooo", "OOO"), ("info", "INFO")]
 
 
 class UserManager(BaseUserManager):
-    def create_user(self, email, password, **extra_fields):
+    def create_user(self, phone, password, **extra_fields):
         """
-        Use email, password, and the additional fields to create and save user
+        Use phone, password, and the additional fields to create and save user
         """
-        if not email:
-            raise TypeError("User must have an email")
+        if not phone:
+            raise TypeError("User must have an phone")
 
-        user = self.model(email=self.normalize_email(email), **extra_fields)
+        user = self.model(phone=phone, **extra_fields)
         user.set_password(password)
         user.is_active = True
 
@@ -85,12 +85,10 @@ class CustomPermissionsMixin(PermissionsMixin):
 
 
 class EndUserManager(BaseUserManager):
-    def create_enduser(
-        self, first_name, email, organization_name, last_name=None, **extra_fields
-    ):
-        if not email:
-            raise ValueError("The Email field must be set")
-        email = self.normalize_email(email)
+    def create_enduser(self, phone, organization_name, **extra_fields):
+        if not phone:
+            raise ValueError("The phone field must be set")
+        # email = self.normalize_email(email)
 
         organization = Organization.objects.filter(name=organization_name).first()
 
@@ -98,10 +96,8 @@ class EndUserManager(BaseUserManager):
             raise ValueError("The organization does not exist")
 
         user_account = User.objects.create(
-            email=email,
+            phone=phone,
             password=generate_random_string(),
-            first_name=first_name,
-            last_name=last_name,
         )
         # enduser = self.model(
         #     username=username, email=email, client=client, **extra_fields
@@ -121,9 +117,11 @@ class EndUserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, CustomPermissionsMixin):
-    first_name = models.CharField(max_length=255, blank=True)
-    last_name = models.CharField(max_length=255, blank=True)
-    email = models.EmailField(max_length=255, unique=True, db_index=True)
+    first_name = models.CharField(max_length=255, blank=True, null=True)
+    last_name = models.CharField(max_length=255, blank=True, null=True)
+    email = models.EmailField(
+        max_length=255, unique=True, db_index=True, blank=True, null=True
+    )
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
@@ -131,13 +129,14 @@ class User(AbstractBaseUser, CustomPermissionsMixin):
     is_online = models.BooleanField(default=False)
     last_login = models.DateTimeField(auto_now=True)
     photo = models.TextField(blank=True, null=True, default="")
+    phone = models.CharField(max_length=25, blank=True, null=True, default="")
 
     USERNAME_FIELD = "email"
 
     objects = UserManager()
 
     def __str__(self):
-        return self.first_name + " " + self.last_name + " " + self.email
+        return self.phone
 
     def get_tokens(self):
         refresh = RefreshToken.for_user(self)
@@ -277,13 +276,7 @@ class EndUser(CreatedModifiedModel):
     objects = EndUserManager()
 
     def __str__(self):
-        return (
-            self.user.first_name
-            + " "
-            + self.user.last_name
-            + " - "
-            + self.organization.name
-        )
+        return self.user.phone + " - " + self.organization.name
 
     def get_user_details(self):
         return {
@@ -293,6 +286,7 @@ class EndUser(CreatedModifiedModel):
             "city": self.city,
             "country": self.country,
             "is_new": self.is_new,
+            "phone": self.user.phone,
         }
 
 
@@ -417,6 +411,8 @@ class Widget(models.Model):
     avatar = models.CharField(max_length=50, choices=AVATAR_CHOICES)
     position = models.CharField(max_length=50, choices=POSITION_CHOICES)
     is_active = models.BooleanField(default=True)
+    color_1 = models.CharField(max_length=50, default="#3A4CF0")
+    color_2 = models.CharField(max_length=50, default="#E01D5A")
 
 
 class FeatureFlagConnect(models.Model):

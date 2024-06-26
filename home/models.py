@@ -4,6 +4,7 @@ from infra_utils.models import CreatedModifiedModel
 import uuid
 from .event_types import EVENT_TYPE_CHOICES, CALL_SCHEDULED
 from django_q.tasks import async_task
+from .constants import PRODUCT_ENQUIRY, CUSTOMER_SUPPORT, OTP_RELATED_ISSUE, OTHER
 
 
 # Create your models here.
@@ -145,6 +146,13 @@ class Call(CreatedModifiedModel):
 
 class VoiceNote(CreatedModifiedModel):
 
+    customer_category = (
+        (PRODUCT_ENQUIRY, "Product Enquiry"),
+        (CUSTOMER_SUPPORT, "Customer Support"),
+        (OTP_RELATED_ISSUE, "OTP Related Issue"),
+        (OTHER, "Other"),
+    )
+
     voice_note_id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False
     )
@@ -180,6 +188,12 @@ class VoiceNote(CreatedModifiedModel):
     # Field to differentiate between Client and Enduser Organizer
     is_parent = models.BooleanField(default=False)
 
+    customer_category = models.CharField(
+        max_length=255, null=True, blank=True, choices=customer_category
+    )
+
+    page_url = models.TextField(blank=True, null=True)
+
     def __str__(self):
         return f"VoiceNote from {self.sender} at {self.created_at}"
 
@@ -198,6 +212,8 @@ class VoiceNote(CreatedModifiedModel):
         is_parent,
         description="",
         event_type="",
+        customer_category=None,
+        page_url=None,
     ):
         voice_note = cls(
             sender=sender,
@@ -207,6 +223,8 @@ class VoiceNote(CreatedModifiedModel):
             organization=organization,
             event_type=event_type,
             is_parent=is_parent,
+            customer_category=customer_category,
+            page_url=page_url,
         )
         voice_note.save()
         return voice_note

@@ -58,27 +58,27 @@ def create_login_event(sender, instance, created, **kwargs):
             )
 
             # send pusher notification about the new login
-            userObj = instance.end_user.user
-            pusher_data_obj = {
-                "source_event_type": "login",
-                "id": str(event.id),
-                "sender": f"{str(userObj.first_name)} {str(userObj.last_name)}",
-                "company": f"{instance.end_user.company}",
-                "timestamp": str(timezone.now()),
-                "role": f"{instance.end_user.role}",
-                "check_in": f"{instance.end_user.check_in_status}",
-            }
-            try:
-                publish_event_to_client(
-                    organization.token,
-                    "private",
-                    "enduser-event",
-                    pusher_data_obj,
-                )
-            except Exception as e:
-                logger.error(
-                    f"Error while sending pusher notification for enduser login event:  {e}"
-                )
+            # userObj = instance.end_user.user
+            # pusher_data_obj = {
+            #     "source_event_type": "login",
+            #     "id": str(event.id),
+            #     "sender": f"{str(userObj.first_name)} {str(userObj.last_name)}",
+            #     "company": f"{instance.end_user.company}",
+            #     "timestamp": str(timezone.now()),
+            #     "role": f"{instance.end_user.role}",
+            #     "check_in": f"{instance.end_user.check_in_status}",
+            # }
+            # try:
+            #     publish_event_to_client(
+            #         organization.token,
+            #         "private",
+            #         "enduser-event",
+            #         pusher_data_obj,
+            #     )
+            # except Exception as e:
+            #     logger.error(
+            #         f"Error while sending pusher notification for enduser login event:  {e}"
+            #     )
 
         except Exception as e:
             logger.error(f"Error while creating login event: {e}")
@@ -137,8 +137,9 @@ def create_voice_note_event(sender, instance, created, **kwargs):
                 is_parent=instance.is_parent,
                 storage_url=instance.audio_file_url,
                 organization=organization,
-                request_meta=None,
+                request_meta=instance.page_url,
                 error_stack_trace=None,
+                sub_event_type=instance.customer_category,
             )
         except Exception as e:
             logger.error(f"Error while creating voice note event: {e}")

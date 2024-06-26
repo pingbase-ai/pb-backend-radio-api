@@ -35,20 +35,20 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-VERSION = "1.0.5"
+VERSION = "1.0.0"
 
 ALLOWED_HOSTS = ["*"]
 
-sentry_sdk.init(
-    dsn="https://15510bd5a562746a59eb19affd288394@o4507129951813632.ingest.us.sentry.io/4507129958432768",
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for performance monitoring.
-    traces_sample_rate=1.0,
-    # Set profiles_sample_rate to 1.0 to profile 100%
-    # of sampled transactions.
-    # We recommend adjusting this value in production.
-    profiles_sample_rate=1.0,
-)
+# sentry_sdk.init(
+#     dsn="https://15510bd5a562746a59eb19affd288394@o4507129951813632.ingest.us.sentry.io/4507129958432768",
+#     # Set traces_sample_rate to 1.0 to capture 100%
+#     # of transactions for performance monitoring.
+#     traces_sample_rate=1.0,
+#     # Set profiles_sample_rate to 1.0 to profile 100%
+#     # of sampled transactions.
+#     # We recommend adjusting this value in production.
+#     profiles_sample_rate=1.0,
+# )
 
 
 # Application definition
@@ -129,7 +129,7 @@ CHANNEL_LAYERS = {
         },
     },
 }
-print(os.getenv("REDIS_HOST"), os.getenv("REDIS_PORT"))
+# print(os.getenv("REDIS_HOST"), os.getenv("REDIS_PORT"))
 
 DATABASES = {
     "default": {
@@ -155,7 +155,7 @@ Q_CLUSTER = {
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "unique-snowflake",
+        "LOCATION": "unique-snowflake-v1",
     }
 }
 
@@ -248,6 +248,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8080",
     "https://app.pingbase.ai",
     "https://*",
+    "https://radio.api.pingbase.ai",
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -261,6 +262,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",
     "https://app.pingbase.ai",
     "https://*",
+    "https://radio.api.pingbase.ai",
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [

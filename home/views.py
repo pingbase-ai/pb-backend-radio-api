@@ -53,7 +53,9 @@ from events.models import Event
 from user.serializers import CustomEndUserSerializer
 from .utils import convert_to_date, convert_webm_to_mp3
 from user.constants import PINGBASE_BOT, PENDING
-
+from infra_utils.utils import generate_random_string
+from user.models import Organization
+from user.serializers import EndUserSerializer
 
 import logging
 import datetime
@@ -552,18 +554,49 @@ class ActivitiesViewModifyVoiceNoteClientAPIView(CustomGenericAPIView):
 
 
 class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
+    # TODO make changes to this view
     # parser_classes = (FileUploadParser,)
     permission_classes = (AllowAny,)
 
     def post(self, request, filename, *args, **kwargs):
 
-        endUserId = request.query_params.get("endUserId")
+        endUserId = request.query_params.get("end_user_id")
         user = User.objects.filter(id=endUserId).first()
         if not user:
-            return Response(
-                {"message": "End user not found"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            try:
+                # create an enduser with phone number
+                org_token = request.headers.get("organization-token")
+                organization = Organization.objects.filter(token=org_token).first()
+
+                required_data = {
+                    "organization_name": organization.name,
+                    "phone": request.query_params.get("phone"),
+                }
+                try:
+                    serializer = EndUserSerializer(data=required_data)
+                    if serializer.is_valid():
+                        enduser = serializer.save()
+                        user = enduser.user
+                    else:
+                        logger.error(
+                            f"Error while creating end user during voice note: {serializer.errors}"
+                        )
+                        return Response(
+                            {"message": "Error while creating end user"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                except Exception as e:
+                    logger.error(f"Error while creating user during voice note: {e}")
+                    return Response(
+                        {"message": "Error while creating user"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            except Exception as e:
+                logger.error(f"Error while creating user during voice note: {e}")
+                return Response(
+                    {"message": "Error while creating user"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         sender = user
         receiver = None
         file = request.FILES.get("file")
@@ -615,6 +648,8 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
                 description=request.data.get("description", ""),
                 organization=user.end_user.organization,
                 event_type=SENT_US_AUDIO_NOTE,
+                customer_category=request.query_params.get("customer_category", None),
+                page_url=request.query_params.get("page_url", None),
             )
             pusher_data_obj = {
                 "source_event_type": "voice_note",
@@ -625,6 +660,7 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
                 "timestamp": str(voice_note.created_at),
                 "unique_id": f"{sender.id}",
                 "role": f"{sender.end_user.role}",
+                "phone": f"{sender.end_user.user.phone}",
             }
             try:
                 publish_event_to_client(
