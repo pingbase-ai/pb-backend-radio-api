@@ -888,7 +888,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         interaction_id=call.call_id
                     ).first()
                     if not existingEvent:
-                        event = Event.create_event_async(
+                        event = Event.create_event(
                             event_type=ANSWERED_OUR_CALL,
                             source_user_id=call.caller.id,
                             destination_user_id=call.receiver.id,
@@ -902,6 +902,8 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                             is_parent=call.is_parent,
                             storage_url=call.file_url,
                             organization=organization,
+                            request_meta=None,
+                            error_stack_trace=None,
                         )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
@@ -927,7 +929,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                         interaction_id=call.call_id
                     ).first()
                     if not existingEvent:
-                        event = Event.create_event_async(
+                        event = Event.create_event(
                             event_type=CALLED_US,
                             source_user_id=call.caller.id,
                             destination_user_id=call.receiver.id,
@@ -941,6 +943,8 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                             is_parent=call.is_parent,
                             storage_url=call.file_url,
                             organization=organization,
+                            request_meta=None,
+                            error_stack_trace=None,
                         )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
@@ -1015,7 +1019,7 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                     organization = call.organization
                     existingEvent = Event.objects.filter(interaction_id=call.call_id)
                     if not existingEvent:
-                        event = Event.create_event_async(
+                        event = Event.create_event(
                             event_type=MISSED_OUR_CALL,
                             source_user_id=call.caller.id,
                             destination_user_id=call.receiver.id,
@@ -1029,9 +1033,40 @@ class ActivitiesCreateViewModifyCallEndUserAPIView(CustomGenericAPIView):
                             is_parent=call.is_parent,
                             storage_url=call.file_url,
                             organization=organization,
+                            request_meta=None,
+                            error_stack_trace=None,
                         )
                 except Exception as e:
                     logger.error(f"Error while creating call event: {e}")
+            elif update_type == "discard_call":
+                try:
+                    call.status = "discarded"
+                    call.save()
+                except Exception as e:
+                    logger.error(f"Error while discarding call: {e}")
+                    return Response(
+                        {"message": "Error while discarding call"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # publish the event to the enduser
+                pusher_data_obj = {
+                    "source_event_type": "discard_call",
+                    "id": str(call.call_id),
+                    "sender": str(call.caller.first_name),
+                    "storage_url": "",
+                }
+                try:
+                    publish_event_to_user(
+                        str(user.client.organization.token),
+                        "private",
+                        encode_base64(f"{call.receiver.id}"),
+                        "client-event",
+                        pusher_data_obj,
+                    )
+                except Exception as e:
+                    logger.error(f"Error while publishing call scheduled event: {e}")
+
             return Response(
                 {"message": f"Call {update_type} successfully"},
                 status=status.HTTP_200_OK,
@@ -1241,7 +1276,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     ).first()
                     logger.info(f"\n\n\n existingEvent: {existingEvent} \n\n\n")
                     if not existingEvent:
-                        event = Event.create_event_async(
+                        event = Event.create_event(
                             event_type=MISSED_THEIR_CALL,
                             source_user_id=call.caller.id,
                             destination_user_id=None,
@@ -1300,7 +1335,7 @@ class ActivitiesCreateCallClientAPIView(CustomGenericAPIView):
                     ).first()
                     logger.info(f"\n\n\n existingEvent: {existingEvent} \n\n\n")
                     if not existingEvent:
-                        event = Event.create_event_async(
+                        event = Event.create_event(
                             event_type=DECLINED_CALL,
                             source_user_id=call.caller.id,
                             destination_user_id=call.receiver.id,

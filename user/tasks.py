@@ -37,7 +37,7 @@ def send_voice_note(user_id, type):
             try:
                 # create events for the voice note
                 # interaction_id should be unique here.
-                event = Event.create_event_async(
+                event = Event.create_event(
                     event_type=event_type,
                     source_user_id=None,
                     destination_user_id=user.id,
@@ -51,6 +51,8 @@ def send_voice_note(user_id, type):
                     is_parent=True,
                     storage_url=storage_url,
                     organization=organization,
+                    request_meta=None,
+                    error_stack_trace=None,
                 )
             except Exception as e:
                 logger.error(f"Error while creating welcome note event: {e}")
@@ -110,7 +112,7 @@ def send_voice_note(user_id, type):
 
         try:
             # create a call you back note event
-            event = Event.create_event_async(
+            event = Event.create_event(
                 event_type=event_type,
                 source_user_id=None,
                 destination_user_id=user.id,
@@ -124,6 +126,8 @@ def send_voice_note(user_id, type):
                 is_parent=True,
                 storage_url=storage_url,
                 organization=organization,
+                request_meta=None,
+                error_stack_trace=None,
             )
         except Exception as e:
             logger.error(f"Error while creating call you back note event: {e}")
@@ -169,7 +173,7 @@ def send_voice_note(user_id, type):
 
         try:
             # create an out of office note event
-            event = Event.create_event_async(
+            event = Event.create_event(
                 event_type=event_type,
                 source_user_id=None,
                 destination_user_id=user.id,
@@ -183,6 +187,8 @@ def send_voice_note(user_id, type):
                 is_parent=True,
                 storage_url=storage_url,
                 organization=organization,
+                request_meta=None,
+                error_stack_trace=None,
             )
         except Exception as e:
             logger.error(f"Error while creating out of office note event: {e}")

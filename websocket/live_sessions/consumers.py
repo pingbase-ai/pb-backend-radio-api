@@ -21,6 +21,8 @@ class EndUserConsumer(AsyncWebsocketConsumer):
             logger.info("Starting connection process")
             from user.models import UserSession
 
+            self.SESSION_IGNORE_USER_IDS = settings.SESSION_IGNORE_USER_IDS
+
             query_string = parse_qs(self.scope["query_string"].decode())
             token = query_string.get("token", [None])[0]
 
@@ -45,23 +47,24 @@ class EndUserConsumer(AsyncWebsocketConsumer):
             # Accept the WebSocket connection
             await self.accept()
 
-            # Create a new session object asynchronously without blocking
-            self.session_task = asyncio.create_task(
-                UserSession.objects.acreate(
-                    session_id=self.session_id,
-                    user_id=self.enduser_id,
-                )
-            )
-
             # Initialize a local buffer for events
             self.event_buffer = []
             self.buffer_flush_task = None
 
-            # Initialize a dictionary to store the latest events of type 2 and 4
-            # self.latest_events = {"2": None, "4": None}
-
             # total duration of the session
             self.total_duration = 0
+
+            # Check if the enduser_id is in SESSION_IGNORE_USER_IDS
+            if self.enduser_id not in self.SESSION_IGNORE_USER_IDS:
+                # Create a new session object asynchronously without blocking
+                self.session_task = asyncio.create_task(
+                    UserSession.objects.acreate(
+                        session_id=self.session_id,
+                        user_id=self.enduser_id,
+                    )
+                )
+            else:
+                self.session_task = None
 
             logger.info(
                 f"Connection established successfully -- {self.channel_group_name}"
@@ -94,39 +97,36 @@ class EndUserConsumer(AsyncWebsocketConsumer):
             if self.event_buffer:
                 await self.flush_event_buffer()
 
-            # Push the events to azure storage
-            storage_url = await asyncio.wait_for(
-                self.save_events_to_azure(), timeout=20.0
-            )
+            storage_url = None
 
-            if self.session:
-                try:
-                    if storage_url:
-                        # Add this storage_url to the session object
-                        self.session.storage_url = storage_url
+            # Check if the enduser_id is in SESSION_IGNORE_USER_IDS
+            if self.enduser_id not in self.SESSION_IGNORE_USER_IDS:
+                # Push the events to azure storage
+                storage_url = await asyncio.wait_for(
+                    self.save_events_to_azure(), timeout=20.0
+                )
 
-                    # Add the latest type 2 and type 4 events to the session object
-                    # self.session.initial_events = [
-                    #     {"message": event["message"]}
-                    #     for event in self.latest_events.values()
-                    #     if event is not None
-                    # ]
+                if self.session:
+                    try:
+                        if storage_url:
+                            # Add this storage_url to the session object
+                            self.session.storage_url = storage_url
 
-                    await asyncio.wait_for(self.session.asave(), timeout=15.0)
+                        await asyncio.wait_for(self.session.asave(), timeout=15.0)
 
-                    # create an Event object for the session using django_q
-                    await sync_to_async(async_task)(
-                        "websocket.live_sessions.tasks.create_session_event",
-                        storage_url,
-                        self.session,
-                        self.enduser_id,
-                        self.total_duration,
-                    )
+                        # create an Event object for the session using django_q
+                        await sync_to_async(async_task)(
+                            "websocket.live_sessions.tasks.create_session_event",
+                            storage_url,
+                            self.session,
+                            self.enduser_id,
+                            self.total_duration,
+                        )
 
-                except asyncio.TimeoutError:
-                    logger.error(
-                        "Saving session storage_url or initial_events timed out during disconnect"
-                    )
+                    except asyncio.TimeoutError:
+                        logger.error(
+                            "Saving session storage_url or initial_events timed out during disconnect"
+                        )
             logger.info(f"Disconnection process completed -- {self.channel_group_name}")
         except Exception as e:
             logger.error(f"Error during disconnect: {e}")
@@ -136,23 +136,20 @@ class EndUserConsumer(AsyncWebsocketConsumer):
             text_data_json = json.loads(text_data)
             message = text_data_json["message"]
 
-            # Add the event to the local buffer
-            self.event_buffer.append(json.dumps(message))
+            # Check if the enduser_id is in SESSION_IGNORE_USER_IDS
+            if self.enduser_id not in self.SESSION_IGNORE_USER_IDS:
+                # Add the event to the local buffer
+                self.event_buffer.append(json.dumps(message))
 
-            # Store the latest event of type 2 and 4
-            # if message_type in ["2", "4"]:
-            #     self.latest_events[message_type] = text_data_json
-            #     await self.save_latest_events()
+                # If the buffer size exceeds a threshold, flush it to Redis
+                if len(self.event_buffer) >= 100:
+                    await self.flush_event_buffer()
 
-            # If the buffer size exceeds a threshold, flush it to Redis
-            if len(self.event_buffer) >= 100:
-                await self.flush_event_buffer()
-
-            # Schedule buffer flushing task if not already scheduled
-            if not self.buffer_flush_task:
-                self.buffer_flush_task = asyncio.create_task(
-                    self.flush_buffer_periodically()
-                )
+                # Schedule buffer flushing task if not already scheduled
+                if not self.buffer_flush_task:
+                    self.buffer_flush_task = asyncio.create_task(
+                        self.flush_buffer_periodically()
+                    )
 
             # EndUser pushing an event to their private channel
             await self.channel_layer.group_send(
@@ -165,29 +162,6 @@ class EndUserConsumer(AsyncWebsocketConsumer):
             )
         except Exception as e:
             logger.error(f"Error during receive: {e}")
-
-    async def save_latest_events(self):
-        try:
-            # Ensure the session creation task has completed
-            if self.session_task:
-                try:
-                    self.session = await asyncio.wait_for(
-                        self.session_task, timeout=5.0
-                    )
-                except asyncio.TimeoutError:
-                    logger.error("Session creation task timed out during event receive")
-                    return
-
-            # Update the session object with the latest events
-            if self.session:
-                self.session.initial_events = [
-                    {"message": event["message"]}
-                    for event in self.latest_events.values()
-                    if event is not None
-                ]
-                await self.session.asave()
-        except Exception as e:
-            logger.error(f"Error during save_latest_events: {e}")
 
     async def flush_event_buffer(self):
         if self.event_buffer:
