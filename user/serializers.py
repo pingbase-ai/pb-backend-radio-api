@@ -106,7 +106,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
             return None
 
     def get_phone(self, obj):
-        return obj.phone
+        return obj.user.phone
 
     def get_total_unread_voice_notes(self, obj):
         try:

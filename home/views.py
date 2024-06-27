@@ -670,7 +670,7 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
                 "timestamp": str(voice_note.created_at),
                 "unique_id": f"{sender.id}",
                 "role": f"{sender.end_user.role}",
-                "phone": f"{sender.end_user.user.phone}",
+                "phone": f"{sender.phone}",
             }
             try:
                 publish_event_to_client(
