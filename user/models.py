@@ -37,14 +37,18 @@ BANNER_TYPES = [("ooo", "OOO"), ("info", "INFO")]
 
 
 class UserManager(BaseUserManager):
-    def create_user(self, phone, password, **extra_fields):
+    def create_user(self, email, phone, password, **extra_fields):
         """
         Use phone, password, and the additional fields to create and save user
         """
-        if not phone:
-            raise TypeError("User must have an phone")
+        if not phone and not email:
+            raise TypeError("User must have an phone or email")
 
-        user = self.model(phone=phone, **extra_fields)
+        if not phone:
+            user = self.model(email=email, **extra_fields)
+        else:
+            user = self.model(phone=phone, **extra_fields)
+
         user.set_password(password)
         user.is_active = True
 
@@ -55,7 +59,7 @@ class UserManager(BaseUserManager):
         """
         Use email, password, and the additional fields to create and save superuser
         """
-        user = self.create_user(email, password, **extra_fields)
+        user = self.create_user(email, None, password, **extra_fields)
         user.is_superuser = True
         user.is_active = True
         user.is_verified = True
