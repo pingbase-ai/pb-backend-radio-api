@@ -26,6 +26,7 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
     source_username = serializers.SerializerMethodField()
     destination_username = serializers.SerializerMethodField()
     timestamp = serializers.SerializerMethodField()
+    sub_event_type = serializers.SerializerMethodField()
 
     enduser_id = serializers.SerializerMethodField()
     enduser_first_name = serializers.SerializerMethodField()
@@ -35,6 +36,7 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
     enduser_email = serializers.SerializerMethodField()
     enduser_last_session_login = serializers.SerializerMethodField()
     enduser_is_new = serializers.SerializerMethodField()
+    enduser_phone = serializers.SerializerMethodField()
 
     enduser_role = serializers.SerializerMethodField()
     enduser_company = serializers.SerializerMethodField()
@@ -184,6 +186,13 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
     def get_name(self, obj):
         return obj.name if obj.name else None
 
+    def get_sub_event_type(self, obj):
+        return obj.sub_event_type
+
+    def get_enduser_phone(self, obj):
+        user = obj.dest_user if obj.is_parent else obj.src_user
+        return user.phone if user else None
+
     class Meta:
         model = Event
         fields = [
@@ -222,6 +231,8 @@ class CustomEventSerializerV1(serializers.ModelSerializer):
             "is_played",
             "is_unread",
             "name",
+            "sub_event_type",
+            "enduser_phone",
         ]
 
 
@@ -243,6 +254,7 @@ class CustomEventSerializer(serializers.ModelSerializer):
     source_username = serializers.SerializerMethodField()
     destination_username = serializers.SerializerMethodField()
     timestamp = serializers.SerializerMethodField()
+    sub_event_type = serializers.SerializerMethodField()
 
     storage_url = serializers.SerializerMethodField()
     is_seen_enduser = serializers.SerializerMethodField()
@@ -321,6 +333,9 @@ class CustomEventSerializer(serializers.ModelSerializer):
     def get_name(self, obj):
         return obj.name if obj.name else None
 
+    def get_sub_event_type(self, obj):
+        return obj.sub_event_type
+
     class Meta:
         model = Event
         fields = [
@@ -345,6 +360,7 @@ class CustomEventSerializer(serializers.ModelSerializer):
             "is_played",
             "is_unread",
             "name",
+            "sub_event_type",
         ]
 
 

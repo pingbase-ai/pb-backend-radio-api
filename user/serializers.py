@@ -21,6 +21,7 @@ from .models import (
     ClientBanner,
     CheckInFeature,
 )
+from events.models import Event
 import datetime
 import logging
 
@@ -46,6 +47,8 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
     last_session_login = serializers.SerializerMethodField()
     is_new = serializers.SerializerMethodField()
     checkin_status = serializers.SerializerMethodField()
+    phone = serializers.SerializerMethodField()
+    total_unread_voice_notes = serializers.SerializerMethodField()
 
     def get_id(self, obj):
         return obj.user.id
@@ -102,6 +105,19 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
             logger.error(f"Error while fetching checkin status: {e}")
             return None
 
+    def get_phone(self, obj):
+        return obj.phone
+
+    def get_total_unread_voice_notes(self, obj):
+        try:
+            count = Event.objects.filter(
+                source_user_id=obj.user.id, is_parent=True, is_read=False
+            ).count()
+            return count
+        except Exception as e:
+            logger.error(f"Error while fetching total unread voice notes: {e}")
+            return 0
+
     class Meta:
         model = EndUser
         fields = [
@@ -119,6 +135,8 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
             "last_session_login",
             "is_new",
             "checkin_status",
+            "phone",
+            "total_unread_voice_notes",
         ]
 
 

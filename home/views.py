@@ -640,6 +640,16 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
             )
 
         try:
+
+            extra_props = request.query_params.get("extra_props", None)
+            if extra_props:
+                extra_request_props = json.loads(extra_props)
+                category = extra_request_props.get("category")
+                url = extra_request_props.get("url")
+            else:
+                category = None
+                url = None
+
             voice_note = VoiceNote.create_voice_note(
                 sender=sender,
                 receiver=receiver,
@@ -648,8 +658,8 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
                 description=request.data.get("description", ""),
                 organization=user.end_user.organization,
                 event_type=SENT_US_AUDIO_NOTE,
-                customer_category=request.query_params.get("customer_category", None),
-                page_url=request.query_params.get("page_url", None),
+                customer_category=category,
+                page_url=url,
             )
             pusher_data_obj = {
                 "source_event_type": "voice_note",
