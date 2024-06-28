@@ -1677,7 +1677,9 @@ class EndUserList(CustomGenericAPIListView):
             if query:
                 search = query.lower()
                 filtered_users_ids = User.objects.filter(
-                    Q(first_name__icontains=search)
+                    Q(phone__icontains=search)
+                    | Q(email__icontains=search)
+                    | Q(first_name__icontains=search)
                     | Q(last_name__icontains=search)
                     | Q(end_user__company__icontains=search)
                 ).values_list("id", flat=True)
