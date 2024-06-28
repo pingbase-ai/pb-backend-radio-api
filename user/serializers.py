@@ -111,7 +111,7 @@ class CustomEndUserSerializer(serializers.ModelSerializer):
     def get_total_unread_voice_notes(self, obj):
         try:
             count = Event.objects.filter(
-                source_user_id=obj.user.id, is_parent=True, is_read=False
+                source_user_id=obj.user.id, is_parent=True, is_unread=True
             ).count()
             return count
         except Exception as e:
