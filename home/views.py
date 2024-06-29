@@ -561,9 +561,11 @@ class ActivitiesCreateVoiceNoteEndUserAPIView(CustomGenericAPIView):
     def post(self, request, filename, *args, **kwargs):
 
         endUserId = request.query_params.get("end_user_id")
-        if endUserId == "":
-            endUserId = -1
-        user = User.objects.filter(id=endUserId).first()
+        phone = request.query_params.get("phone")
+        if endUserId == "" or not endUserId:
+            user = User.objects.filter(phone=phone).first()
+        else:
+            user = User.objects.filter(id=endUserId).first()
         if not user:
             try:
                 # create an enduser with phone number

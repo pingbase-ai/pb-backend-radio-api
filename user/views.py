@@ -1060,8 +1060,10 @@ class CreateEndUserView(CustomGenericAPIView):
                 endUser.role = request.data.get("role", None)
                 endUser.trial_type = request.data.get("trial_type", None)
                 endUser.company = request.data.get("company", None)
+                endUser.user.email = request.data.get("email", None)
                 endUser.is_new = is_new
                 endUser.save()
+                endUser.user.save()
             except Exception as e:
                 logger.error(f"Error while updating endUser details: {e}")
 

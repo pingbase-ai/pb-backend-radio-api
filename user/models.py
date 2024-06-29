@@ -6,6 +6,7 @@ from django.contrib.auth.models import (
     Group,
     Permission,
 )
+from django.core.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 from infra_utils.models import CreatedModifiedModel
 from user.constants import (
@@ -133,7 +134,9 @@ class User(AbstractBaseUser, CustomPermissionsMixin):
     is_online = models.BooleanField(default=False)
     last_login = models.DateTimeField(auto_now=True)
     photo = models.TextField(blank=True, null=True, default="")
-    phone = models.CharField(max_length=25, blank=True, null=True, default="")
+    phone = models.CharField(
+        max_length=25, blank=True, null=True, default="", unique=True
+    )
 
     USERNAME_FIELD = "email"
 
@@ -149,6 +152,17 @@ class User(AbstractBaseUser, CustomPermissionsMixin):
     def set_online_status(self, status: bool) -> None:
         self.is_online = status
         self.save()
+
+    def clean(self):
+        # Custom validation to ensure that either email or phone is provided
+        if not self.email and not self.phone:
+            raise ValidationError(
+                "Either an email address or a phone number must be provided."
+            )
+
+    def save(self, *args, **kwargs):
+        self.clean()  # Call the clean method to perform validation checks
+        super(User, self).save(*args, **kwargs)
 
 
 class Organization(CreatedModifiedModel):
