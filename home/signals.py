@@ -299,40 +299,40 @@ def create_meeting_event(sender, instance, created, **kwargs):
         pass
 
 
-@receiver(post_save, sender=EndUserSession)
-def track_enduser_session(sender, instance, created, **kwargs):
-    """
-    Signal to create an event for endUser session.
-    """
-    if created:
-        try:
-            organization = instance.organization
-            end_user = instance.end_user
-            user = end_user.user
+# @receiver(post_save, sender=EndUserSession)
+# def track_enduser_session(sender, instance, created, **kwargs):
+#     """
+#     Signal to create an event for endUser session.
+#     """
+#     if created:
+#         try:
+#             organization = instance.organization
+#             end_user = instance.end_user
+#             user = end_user.user
 
-            # june identify
-            analytics.identify(
-                user_id=str(user.id),
-                traits={
-                    "email": user.email,
-                    "firstName": user.first_name,
-                    "lastName": user.last_name,
-                    "role": end_user.role,
-                    "industry": end_user.company,
-                    "plan": end_user.trial_type,
-                    "orgKey": organization.token,
-                    "userType": "ENDUSER",
-                },
-            )
+#             # june identify
+#             analytics.identify(
+#                 user_id=str(user.id),
+#                 traits={
+#                     "email": user.email,
+#                     "firstName": user.first_name,
+#                     "lastName": user.last_name,
+#                     "role": end_user.role,
+#                     "industry": end_user.company,
+#                     "plan": end_user.trial_type,
+#                     "orgKey": organization.token,
+#                     "userType": "ENDUSER",
+#                 },
+#             )
 
-            # june track
-            analytics.track(
-                user_id=str(user.id),
-                event=WIDGET_LAUNCHER_VIEW,
-                properties={
-                    "session_id": str(instance.session_id),
-                    "last_active": instance.last_session_active,
-                },
-            )
-        except Exception as e:
-            logger.error(f"Error while tracking enduser session: {e}")
+#             # june track
+#             analytics.track(
+#                 user_id=str(user.id),
+#                 event=WIDGET_LAUNCHER_VIEW,
+#                 properties={
+#                     "session_id": str(instance.session_id),
+#                     "last_active": instance.last_session_active,
+#                 },
+#             )
+#         except Exception as e:
+#             logger.error(f"Error while tracking enduser session: {e}")
