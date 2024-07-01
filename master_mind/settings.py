@@ -35,7 +35,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-VERSION = "1.0.12"
+VERSION = "1.0.13"
 
 ALLOWED_HOSTS = ["*"]
 
@@ -263,10 +263,12 @@ CORS_ALLOWED_ORIGINS = [
     "https://app.pingbase.ai",
     "https://*",
     "https://radio.api.pingbase.ai",
+    "https://www.toolsvilla.com",
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://\w+\.dyte\.io$",
+    r"^https://\w+\.toolsvilla\.com$",
 ]
 
 CORS_ALLOW_HEADERS = list(default_headers) + ["X-User-Token", "organization-token"]
