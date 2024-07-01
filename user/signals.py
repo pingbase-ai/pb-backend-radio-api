@@ -44,7 +44,7 @@ from user.constants import (
     get_first_enduser_invite_slack_block_template_part_2,
     get_first_enduser_invite_slack_block_template_part_3,
 )
-
+from django.db import transaction
 from home.event_types import SUCCESS, MANUAL
 
 import logging
@@ -106,11 +106,15 @@ def send_slack_notification_on_first_enduser_login(sender, instance, created, **
     Signal to send slack notification on first enduser login.
     """
     if created:
-
-        # check if this is the first enduser login
-        total_endusers = EndUser.objects.filter(
-            organization=instance.organization
-        ).count()
+        logger.info(f"New enduser created: {instance}")
+        with transaction.atomic():
+            organization = instance.organization  # Get the organization of the new user
+            total_endusers = (
+                EndUser.objects.select_for_update()
+                .filter(organization=organization)  # Filter by organization
+                .count()
+            )
+            logger.info(f"Total endusers for organization: {total_endusers}")
         if total_endusers == 1:
             try:
                 # send a slack notification

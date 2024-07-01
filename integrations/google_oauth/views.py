@@ -62,7 +62,9 @@ class GoogleCalendarViewInit(CustomGenericAPIView):
                 status=status.HTTP_200_OK,
             )
 
-        referer = request.META.get("HTTP_REFERER", "https://app.pingbase.ai/onboarding")
+        referer = request.META.get(
+            "HTTP_REFERER", "https://toolsvilla.app.pingbase.ai/onboarding"
+        )
         # Create flow instance to manage the OAuth 2.0 Authorization Grant Flow steps.
         flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
             CLIENT_SECRETS_FILE, scopes=SCOPES

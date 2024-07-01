@@ -93,7 +93,9 @@ class SlackAuthUrlAPIView(CustomAPIView):
     def get(self, request, *args, **kwargs):
         company = request.query_params.get("company", None)
 
-        referer = request.META.get("HTTP_REFERER", "https://app.pingbase.ai/onboarding")
+        referer = request.META.get(
+            "HTTP_REFERER", "https://toolsvilla.app.pingbase.ai/onboarding"
+        )
 
         logger.info(f"source_request_url: {referer}")
 

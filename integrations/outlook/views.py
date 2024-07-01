@@ -41,7 +41,7 @@ class OutlookCalendarViewInit(CustomGenericAPIView):
         custom_data = {
             "user_email": user_email,
             "referer": request.META.get(
-                "HTTP_REFERER", "https://app.pingbase.ai/onboarding"
+                "HTTP_REFERER", "https://toolsvilla.app.pingbase.ai/onboarding"
             ),
         }
         encoded_state = quote(json.dumps(custom_data))

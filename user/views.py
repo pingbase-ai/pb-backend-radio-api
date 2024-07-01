@@ -411,7 +411,7 @@ class InviteTeamateView(CustomGenericAPIView):
         invitee_email = data.get("invitee_email")
 
         referer: str = request.META.get(
-            "HTTP_REFERER", "https://app.pingbase.ai/onboarding"
+            "HTTP_REFERER", "https://toolsvilla.toolsvilla.app.pingbase.ai/onboarding"
         )
 
         ClientInvitee = Client.objects.filter(user__email=invitee_email).first()
@@ -1489,8 +1489,8 @@ class EmailVerificationView(CustomAPIView):
                 user.is_active = True
                 user.save()
 
-            base_url = "https://app.pingbase.ai/signup"
-            base_url_2 = "https://app.pingbase.ai"
+            base_url = "https://toolsvilla.app.pingbase.ai/signup"
+            base_url_2 = "https://toolsvilla.app.pingbase.ai"
             query_params = f"?email={user.email}&company_name={company_name}"
             redirect_url = base_url + query_params
             if all_clients_objects_count == 1:
@@ -1617,7 +1617,7 @@ class PasswordResetTokenValidationView(CustomGenericAPIView):
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
             # Redirect to frontend
-            base_url = "https://app.pingbase.ai/update-password"
+            base_url = "https://toolsvilla.app.pingbase.ai/update-password"
             query_params = f"?uidb64={uidb64}&token={token}&email={user.email}"
             redirect_url = base_url + query_params
 
