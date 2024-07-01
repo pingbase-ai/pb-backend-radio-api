@@ -35,7 +35,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-VERSION = "1.0.14"
+VERSION = "1.0.15"
 
 ALLOWED_HOSTS = ["*"]
 
@@ -276,6 +276,7 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     "X-User-Token",
     "organization-token",
     "baggage",
+    "Sentry-Trace",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True  # Should find a proper way to allow public endpoints
