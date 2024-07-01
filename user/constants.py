@@ -25,23 +25,27 @@ def get_integration_code_snippet(token: str) -> str:
     integration_code_snippet = f"""
     1) Paste the following script tag at the very top of the <head> of your site, replacing [SCRIPT] and [/SCRIPT] with the appropriate tag brackets:
     <br><br>
-    [SCRIPT] type="text/javascript" src="https://pub-97c89484d63d47cd8329552fff50e010.r2.dev/main.js" defer[/SCRIPT]
+    [SCRIPT] type="text/javascript" src="https://pub-97c89484d63d47cd8329552fff50e010.r2.dev/voice/main.js" defer[/SCRIPT]
     <br><br>
     Install the @pingbase/connect package using npm or yarn:
     <br>
-    npm install --save @pingbase/connect
+    npm install @pingbase/connect
     <br>
     (or)
     <br>
-    yarn install --save @pingbase/connect
+    yarn install @pingbase/connect
     <br><br>
     2) Add the following command in your code to initialise PingBase
     <br><br>
-    import PingBase from '@pingbase/connect';
+    import PingBaseVoice from '@pingbase/connect/PingBaseVoice';
+    <br>
+    PingBaseVoice("initOrg", "ORG_TOKEN")
     <br><br>
     PingBase('initOrg', '{token}');
     <br>
-    PingBase('initUser', 'email', 'firstName', 'lastName', 'trialType');
+    PingBase('initUser', 'phone');
+    <br><br>
+    for more details visit <a href="https://docs.pingbase.ai/voice-widget-integration">Docs</a>
     """
     return integration_code_snippet
 
@@ -87,6 +91,56 @@ def get_new_app_signup_slack_block_template_part_3():
                     "style": "primary",
                     "value": "click_me_123",
                     "url": "https://api.pingbase.ai/admin/user/organization/",
+                },
+            ],
+        },
+    )
+
+
+def get_first_enduser_invite_slack_block_template_part_1(company):
+    return (
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f":tada: \t *First Enduser for {company} \t:tada:*",
+            },
+        },
+    )
+
+
+def get_first_enduser_invite_slack_block_template_part_2(email, phone):
+    return (
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*Email:*\n{email} \n *Phone:*\n{phone}",
+            },
+            "accessory": {
+                "type": "image",
+                "image_url": "https://media3.giphy.com/media/gfZUYT3ReSiaF28bnn/giphy_s.gif?cid=6c09b952cbmd0knfetng27dxz54cyjc3wkwold0ue99xlols&ep=v1_internal_gif_by_id&rid=giphy_s.gif&ct=s",
+                "alt_text": "Yes!!!",
+            },
+        },
+    )
+
+
+def get_first_enduser_invite_slack_block_template_part_3():
+    return (
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": ":rose: Awesome :rose:",
+                        "emoji": True,
+                    },
+                    "style": "primary",
+                    "value": "click_me_1234",
+                    "url": "https://api.pingbase.ai/admin/user/end-users/",
                 },
             ],
         },

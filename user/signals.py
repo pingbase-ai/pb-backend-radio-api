@@ -38,6 +38,12 @@ from user.constants import (
     CHECKIN_NOT_APPLICABLE,
 )
 from infra_utils.utils import encode_base64
+from user.tasks import send_slack_blocks_async
+from user.constants import (
+    get_first_enduser_invite_slack_block_template_part_1,
+    get_first_enduser_invite_slack_block_template_part_2,
+    get_first_enduser_invite_slack_block_template_part_3,
+)
 
 from home.event_types import SUCCESS, MANUAL
 
@@ -95,49 +101,87 @@ def watch_check_in_status(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=EndUser)
-def create_dyte_meeting(sender, instance, created, **kwargs):
+def send_slack_notification_on_first_enduser_login(sender, instance, created, **kwargs):
     """
-    Signal to create a DyteMeeting instance and auth token for the endUser.
+    Signal to send slack notification on first enduser login.
     """
-    logger.info(f"create_dyte_meeting signal triggered for endUser: {instance}")
     if created:
-        try:
-            # Create a DyteMeeting instance for the endUser
-            meeting = DyteMeeting.create_meeting(instance)
 
-            # Create auth token for the endUser
-            authToken = DyteAuthToken.create_dyte_auth_token(
-                meeting, False, end_user=instance
-            )
-        except Exception as e:
-            logger.error(f"Error while creating Dyte meeting and auth token: {e}")
-
-
-@receiver(post_save, sender=EndUser)
-def send_welcome_note(sender, instance, created, **kwargs):
-    if (created or not instance.welcome_note_sent) and (
-        instance.organization.auto_send_welcome_note
-    ):
-        delay_time = int(instance.organization.auto_sent_after)
-        schedule(
-            "user.tasks.send_voice_note",
-            instance.user.id,
-            "welcome_note",
-            schedule_type="O",
-            next_run=timezone.now() + timedelta(seconds=delay_time),
-        )
-
-
-@receiver(post_save, sender=EndUser)
-def fetch_linkedIn_url(sender, instance, created, **kwargs):
-    if created:
-        try:
-            if not instance.linkedin:
+        # check if this is the first enduser login
+        total_endusers = EndUser.objects.filter(
+            organization=instance.organization
+        ).count()
+        if total_endusers == 1:
+            try:
+                # send a slack notification
+                company = instance.organization.name
                 email = instance.user.email
-                # fetch the linkedIn URL ASYNC
-                LinkedIn.get_linkedIn_url_async(email)
-        except Exception as e:
-            logger.error(f"Error while fetching LinkedIn URL: {e}")
+                phone = instance.user.phone
+                blocks = [
+                    *get_first_enduser_invite_slack_block_template_part_1(company),
+                    *get_first_enduser_invite_slack_block_template_part_2(email, phone),
+                    *get_first_enduser_invite_slack_block_template_part_3(),
+                ]
+                slack_hook = settings.SLACK_APP_SIGNUPS_WEBHOOK_URL
+
+                data = {
+                    "blocks": blocks,
+                    "slack_hook": slack_hook,
+                }
+                try:
+                    send_slack_blocks_async(data)
+                except Exception as e:
+                    logger.error(
+                        f"Error while sending slack notification from view: {e}"
+                    )
+            except Exception as e:
+                logger.error(f"Error while sending slack notification: {e}")
+
+
+# @receiver(post_save, sender=EndUser)
+# def create_dyte_meeting(sender, instance, created, **kwargs):
+#     """
+#     Signal to create a DyteMeeting instance and auth token for the endUser.
+#     """
+#     logger.info(f"create_dyte_meeting signal triggered for endUser: {instance}")
+#     if created:
+#         try:
+#             # Create a DyteMeeting instance for the endUser
+#             meeting = DyteMeeting.create_meeting(instance)
+
+#             # Create auth token for the endUser
+#             authToken = DyteAuthToken.create_dyte_auth_token(
+#                 meeting, False, end_user=instance
+#             )
+#         except Exception as e:
+#             logger.error(f"Error while creating Dyte meeting and auth token: {e}")
+
+
+# @receiver(post_save, sender=EndUser)
+# def send_welcome_note(sender, instance, created, **kwargs):
+#     if (created or not instance.welcome_note_sent) and (
+#         instance.organization.auto_send_welcome_note
+#     ):
+#         delay_time = int(instance.organization.auto_sent_after)
+#         schedule(
+#             "user.tasks.send_voice_note",
+#             instance.user.id,
+#             "welcome_note",
+#             schedule_type="O",
+#             next_run=timezone.now() + timedelta(seconds=delay_time),
+#         )
+
+
+# @receiver(post_save, sender=EndUser)
+# def fetch_linkedIn_url(sender, instance, created, **kwargs):
+#     if created:
+#         try:
+#             if not instance.linkedin:
+#                 email = instance.user.email
+#                 # fetch the linkedIn URL ASYNC
+#                 LinkedIn.get_linkedIn_url_async(email)
+#         except Exception as e:
+#             logger.error(f"Error while fetching LinkedIn URL: {e}")
 
 
 @receiver(post_save, sender=Widget)
