@@ -106,37 +106,41 @@ def send_slack_notification_on_first_enduser_login(sender, instance, created, **
     Signal to send slack notification on first enduser login.
     """
     logger.info(f"Enduser Instance: {instance} \t created: {created}")
-    with transaction.atomic():
-        organization = instance.organization  # Get the organization of the new user
-        total_endusers = (
-            EndUser.objects.select_for_update()
-            .filter(organization=organization)  # Filter by organization
-            .count()
-        )
-        logger.info(f"Total endusers for organization: {total_endusers}")
-    if total_endusers == 1:
-        try:
-            # send a slack notification
-            company = instance.organization.name
-            email = instance.user.email
-            phone = instance.user.phone
-            blocks = [
-                *get_first_enduser_invite_slack_block_template_part_1(company),
-                *get_first_enduser_invite_slack_block_template_part_2(email, phone),
-                *get_first_enduser_invite_slack_block_template_part_3(),
-            ]
-            slack_hook = settings.SLACK_APP_SIGNUPS_WEBHOOK_URL
-
-            data = {
-                "blocks": blocks,
-                "slack_hook": slack_hook,
-            }
+    if created:
+        logger.info(f"New enduser created: {instance}")
+        with transaction.atomic():
+            organization = instance.organization  # Get the organization of the new user
+            total_endusers = (
+                EndUser.objects.select_for_update()
+                .filter(organization=organization)  # Filter by organization
+                .count()
+            )
+            logger.info(f"Total endusers for organization: {total_endusers}")
+        if total_endusers == 1:
             try:
-                send_slack_blocks_async(data)
+                # send a slack notification
+                company = instance.organization.name
+                email = instance.user.email
+                phone = instance.user.phone
+                blocks = [
+                    *get_first_enduser_invite_slack_block_template_part_1(company),
+                    *get_first_enduser_invite_slack_block_template_part_2(email, phone),
+                    *get_first_enduser_invite_slack_block_template_part_3(),
+                ]
+                slack_hook = settings.SLACK_APP_SIGNUPS_WEBHOOK_URL
+
+                data = {
+                    "blocks": blocks,
+                    "slack_hook": slack_hook,
+                }
+                try:
+                    send_slack_blocks_async(data)
+                except Exception as e:
+                    logger.error(
+                        f"Error while sending slack notification from view: {e}"
+                    )
             except Exception as e:
-                logger.error(f"Error while sending slack notification from view: {e}")
-        except Exception as e:
-            logger.error(f"Error while sending slack notification: {e}")
+                logger.error(f"Error while sending slack notification: {e}")
 
 
 # @receiver(post_save, sender=EndUser)

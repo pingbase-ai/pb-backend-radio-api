@@ -5,14 +5,16 @@ class UserConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "user"
 
-    # def ready(self) -> None:
+    def ready(self) -> None:
+        super().ready()
+
+        import user.signals
+
     # from django_q.models import Schedule
     # from django_q.tasks import schedule
     # import datetime
 
-    # super().ready()
-
-    # import user.signals
+    #
 
     # task_name = "Update Active Status For All Clients"
     # try:
